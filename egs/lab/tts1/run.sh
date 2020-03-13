@@ -194,7 +194,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
            --backend ${backend} \
            --ngpu ${ngpu} \
            --minibatches ${N} \
-           --report-interval-iters 10 \
+           --report-interval-iters 15 \
            --outdir ${expdir}/results \
            --tensorboard-dir tensorboard/${expname} \
            --verbose ${verbose} \
