@@ -11,7 +11,7 @@
 backend=pytorch
 stage=-1
 stop_stage=100
-ngpu=1       # number of gpus ("0" uses cpu, otherwise use gpu)
+ngpu=2       # number of gpus ("0" uses cpu, otherwise use gpu)
 nj=24        # numebr of parallel jobs
 dumpdir=dump # directory to dump full features
 verbose=1    # verbose option (if set > 0, get more log)
@@ -110,11 +110,18 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         ${fbankdir}
 
     # make a dev set
-    utils/subset_data_dir.sh --last data/${trans_type}_train 500 data/${trans_type}_deveval
-    utils/subset_data_dir.sh --last data/${trans_type}_deveval 250 data/${eval_set}
-    utils/subset_data_dir.sh --first data/${trans_type}_deveval 250 data/${dev_set}
-    n=$(( $(wc -l < data/${trans_type}_train/wav.scp) - 500 ))
-    utils/subset_data_dir.sh --first data/${trans_type}_train ${n} data/${train_set}
+    all_samples=$(wc -l < data/${trans_type}_train/wav.scp)
+    dev_samples=$(python -c "print(int(${all_samples} * 0.05))")
+    dev_eval_samples=$(python -c "print(${dev_samples} * 2)")
+    train_samples=$(python -c "print(${all_samples} - ${dev_eval_samples})")
+    echo "All samples:   ${all_samples}"
+    echo "Dev samples:   ${dev_samples}"
+    echo "Eval samples:  ${dev_samples}"
+    echo "Train samples: ${train_samples}"
+    utils/subset_data_dir.sh --last data/${trans_type}_train ${dev_eval_samples} data/${trans_type}_deveval
+    utils/subset_data_dir.sh --last data/${trans_type}_deveval ${dev_samples} data/${eval_set}
+    utils/subset_data_dir.sh --first data/${trans_type}_deveval ${dev_samples} data/${dev_set}
+    utils/subset_data_dir.sh --first data/${trans_type}_train ${train_samples} data/${train_set}
 
     # compute statistics for global mean-variance normalization
     compute-cmvn-stats scp:data/${train_set}/feats.scp data/${train_set}/cmvn.ark
