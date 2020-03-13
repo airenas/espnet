@@ -30,7 +30,7 @@ text=${data_dir}/text
 find ${db} -follow -name "*.wav" | sort | while read -r filename;do
     id=$(basename ${filename} | sed -e "s/\.[^\.]*$//g")
     echo "${id} ${filename}" >> ${scp}
-    echo "${id} KAZ" >> ${utt2spk}
+    echo "${id} SAB" >> ${utt2spk}
 done
 utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 echo "finished making wav.scp, utt2spk, spk2utt."
