@@ -1,6 +1,6 @@
-# LAB Text-to-Speech recipe
+# Sabina Text-to-Speech recipe
 
-Written by Airenas Vaičiūnas @ VMU, Kaunas (2020/03/12)
+Written by Airenas Vaičiūnas @ VMU, Kaunas (2020/03/13)
 
 ## tts1 recipe
 
