@@ -27,4 +27,7 @@ tensorboard:
 
 jupyter:
 	$(SSH_JN_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
-		cd $(tts_dir); pwd; jupyter notebook"	
+		cd $(tts_dir); pwd; jupyter notebook"
+
+train: 
+	./run.sh --stage 3 --stop-stage 3			
