@@ -11,7 +11,7 @@
 backend=pytorch
 stage=-1
 stop_stage=100
-ngpu=2       # number of gpus ("0" uses cpu, otherwise use gpu)
+ngpu=1       # number of gpus ("0" uses cpu, otherwise use gpu)
 nj=24        # numebr of parallel jobs
 dumpdir=dump # directory to dump full features
 verbose=1    # verbose option (if set > 0, get more log)
