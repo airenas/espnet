@@ -33,7 +33,8 @@ win_length="" # window length
 trans_type="char"
 
 # config files
-train_config=conf/train_pytorch_tacotron2.yaml # you can select from conf or conf/tuning.
+train_config=conf/tuning/train_pytorch_transformer.v3.single.yaml
+    #conf/train_pytorch_tacotron2.yaml # you can select from conf or conf/tuning.
                                                # now we support tacotron2, transformer, and fastspeech
                                                # see more info in the header of each config.
 decode_config=conf/decode.yaml
