@@ -15,7 +15,7 @@ exp=char_train_no_dev_pytorch_train_pytorch_transformer.v3.single
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 logs:
-	$(SSH_CMD) "cd $(exp_dir) && tail -f exp/$(exp)/train.log"
+	$(SSH_CMD) "cd $(exp_dir) && tail -n 40 -f exp/$(exp)/train.log"
 
 nvidia:
 	$(SSH_CMD) "watch nvidia-smi"

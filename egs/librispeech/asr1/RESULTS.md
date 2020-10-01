@@ -1,3 +1,48 @@
+# pytorch large conformer with specaug (8 GPUs) + Transformer LM (4 GPUs)
+
+We used the same LM model in the previous report.
+
+- Environments
+  - python version: `3.8.3 (default)  [GCC 7.3.0]`
+  - espnet version: `espnet 0.9.2`
+  - chainer version: `chainer 6.0.0`
+  - pytorch version: `pytorch 1.4.0`
+
+- Model files (archived to model.tar.gz by `$ pack_model.sh`)
+    - model link: ([pretrained model](https://drive.google.com/drive/folders/1GFaqEKsI6M_dBbxHD7s84J3yi5WGeNNC?usp=sharing))
+    - training config file: `conf/tuning/conformer/train_pytorch_conformer_large.yaml`
+    - decoding config file: `conf/decode.yaml`
+    - cmvn file: `data/train_960/cmvn.ark`
+    - e2e file: `exp/train_960_pytorch_train_pytorch_conformer_large_specaug/results/model.val5.avg.best`
+    - e2e JSON file: `exp/train_960_pytorch_train_pytorch_conformer_large_specaug/results/model.json`
+    - lm file: `exp/train_rnnlm_transformer/rnnlm.model.best`
+    - lm JSON file: `exp/train_rnnlm_transformer/model.json`
+    - dict file: `data/lang_char`
+  - Results (paste them by yourself or obtained by `$ pack_model.sh --results <results>`)
+```
+exp/train_960_pytorch_train_pytorch_conformer_large_specaug/decode_dev_clean_model.val5.avg.best_decode_transformer/result.wrd.txt
+|    SPKR           |    # Snt        # Wrd    |    Corr           Sub          Del           Ins          Err         S.Err    |
+|    Sum/Avg        |    2703         54402    |    98.2           1.6          0.2           0.2          2.0          26.3    |
+exp/train_960_pytorch_train_pytorch_conformer_large_specaug/decode_dev_other_model.val5.avg.best_decode_transformer/result.wrd.txt
+|    SPKR           |    # Snt        # Wrd    |    Corr           Sub          Del           Ins          Err         S.Err    |
+|    Sum/Avg        |    2864         50948    |    95.6           3.9          0.5           0.5          4.9          40.8    |
+exp/train_960_pytorch_train_pytorch_conformer_large_specaug/decode_test_clean_model.val5.avg.best_decode_transformer/result.wrd.txt
+|    SPKR            |    # Snt       # Wrd     |    Corr          Sub           Del          Ins           Err        S.Err     |
+|    Sum/Avg         |    2620        52576     |    98.1          1.7           0.2          0.3           2.2         26.6     |
+exp/train_960_pytorch_train_pytorch_conformer_large_specaug/decode_test_other_model.val5.avg.best_decode_transformer/result.wrd.txt
+|    SPKR            |    # Snt       # Wrd     |    Corr          Sub           Del          Ins           Err        S.Err     |
+|    Sum/Avg         |    2939        52343     |    95.3          4.1           0.6          0.6           5.3         44.8     |
+```
+
+
+# Lightweight/Dynamic convolution results
+| |         | # Snt | # Wrd |Corr|Sub|Del|Ins|Err|S.Err |
+| ------- | ---   | --    | -- | -  | - | - | - | - | - |
+|exp/train_960_pytorch_train_pytorch_LC_specaug/decode_dev_clean_model.val5.avg.best_decode_lm/result.wrd.txt:|Sum/Avg|2703|54402|96.9|2.8|0.3|0.3|3.4|39.0|
+|exp/train_960_pytorch_train_pytorch_SA-DC_specaug/decode_dev_other_model.val5.avg.best_decode_lm/result.wrd.txt:|Sum/Avg|2864|50948|92.7|6.5|0.8|0.9|8.2|55.9|
+|exp/train_960_pytorch_train_pytorch_DC_specaug/decode_test_clean_model.val5.avg.best_decode_lm/result.wrd.txt:|Sum/Avg|2620|52576|96.9|2.9|0.3|0.4|3.5|37.9|
+|exp/train_960_pytorch_train_pytorch_SA-DC2D_specaug/decode_test_other_model.val5.avg.best_decode_lm/result.wrd.txt:|Sum/Avg|2939|52343|92.5|6.7|0.8|1.0|8.5|60.2|
+
 # pytorch large Transformer with specaug (4 GPUs) + Transformer LM (4 GPUs)
 
 We used the same ASR model in the previous report.

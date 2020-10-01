@@ -86,4 +86,8 @@ class AdadeltaFactory(OptimizerFactoryInterface):
         )
 
 
-OPTIMIZER_FACTORY_DICT = {"adam": AdamFactory, "sgd": SGDFactory, "adadelta": AdadeltaFactory}
+OPTIMIZER_FACTORY_DICT = {
+    "adam": AdamFactory,
+    "sgd": SGDFactory,
+    "adadelta": AdadeltaFactory,
+}

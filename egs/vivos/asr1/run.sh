@@ -37,6 +37,7 @@ recog_model=model.loss.best
 
 # transformer related
 n_average=5
+use_valbest_average=false
 
 # data
 datadir=./downloads
@@ -232,10 +233,16 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
 
     if [[ $(get_yaml.py ${train_config} etype) = *transformer* ]] || \
            [[ $(get_yaml.py ${train_config} dtype) = *transformer* ]] || \
-           [[ $(get_yaml.py ${train_config} model-module) = *transformer* ]]; then
+           [[ $(get_yaml.py ${train_config} model-module) = *transformer* ]] || \
+           [[ $(get_yaml.py ${train_config} model-module) = *conformer* ]]; then
 
-        recog_model=model.last${n_average}.avg.best
-        opt="--log"
+        if [ ${use_valbest_average} == true ]; then
+            recog_model=model.val${n_average}.avg.best
+            opt="--log ${expdir}/results/log"
+        else
+            recog_model=model.last${n_average}.avg.best
+            opt="--log"
+        fi
 
         average_checkpoints.py \
             ${opt} \
