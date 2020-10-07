@@ -31,3 +31,6 @@ jupyter:
 
 train: 
 	./run.sh --stage 3 --stop-stage 3			
+
+train-one: 
+	./run.sh --stage $(stage) --stop-stage $(stage)

@@ -58,7 +58,7 @@ wer=true                                       # true: evaluate CER & WER, false
 
 # root directory of db
 db_root=downloads
-corpus=sabina.v01
+corpus=sabina.v02
 
 # exp tag
 tag="" # tag for managing experiments.
