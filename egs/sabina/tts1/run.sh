@@ -21,8 +21,8 @@ resume=""    # the snapshot path to resume (if set empty, no effect)
 
 # feature extraction related
 fs=22050      # sampling frequency
-fmax=7600     # maximum frequency
-fmin=80       # minimum frequency
+fmax=300      # maximum frequency
+fmin=150      # minimum frequency
 n_mels=80     # number of mel basis
 n_fft=1024    # number of fft points
 n_shift=256   # number of shift points
@@ -33,7 +33,7 @@ win_length="" # window length
 trans_type="char"
 
 # config files
-train_config=conf/tuning/train_pytorch_transformer.v3.single.yaml
+train_config=conf/train_pytorch_tacotron2.yaml
     #conf/train_pytorch_tacotron2.yaml # you can select from conf or conf/tuning.
                                                # now we support tacotron2, transformer, and fastspeech
                                                # see more info in the header of each config.

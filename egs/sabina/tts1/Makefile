@@ -40,4 +40,5 @@ train-one:
 
 put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
-	
+
+.EXPORT_ALL_VARIABLES:	
