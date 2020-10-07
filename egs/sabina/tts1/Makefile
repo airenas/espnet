@@ -29,8 +29,15 @@ jupyter:
 	$(SSH_JN_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
 		cd $(tts_dir); pwd; jupyter notebook"
 
+ssh:
+	$(SSH_CMD)
+
 train: 
 	./run.sh --stage 3 --stop-stage 3			
 
 train-one: 
 	./run.sh --stage $(stage) --stop-stage $(stage)
+
+put-data:
+	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
+	
