@@ -9,9 +9,11 @@ SSH_CMD=ssh -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 SSH_TF_CMD=ssh -L 6006:localhost:6006 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 SSH_JN_CMD=ssh -L 8888:localhost:8888 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 #####################################################################################
+work_dir?=g-01
 tts_dir=$(HOME_DIR)/gfs/tts
 exp_dir=$(tts_dir)/espnet/egs/sabina/tts1
-exp=char_train_no_dev_pytorch_train_pytorch_transformer.v3.single
+exp?=char_train_no_dev_pytorch_train_pytorch_transformer.v3.single
+trans_type?=char
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 logs:
@@ -33,12 +35,15 @@ ssh:
 	$(SSH_CMD)
 
 train: 
-	./run.sh --stage 3 --stop-stage 3			
+	./run.sh --stage 3 --stop-stage 3 --trans_type $(trans_type)			
 
 train-one: 
-	./run.sh --stage $(stage) --stop-stage $(stage)
+	./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
 
 put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
+
+clean:
+	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank
 
 .EXPORT_ALL_VARIABLES:	
