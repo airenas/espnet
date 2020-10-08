@@ -48,3 +48,6 @@ dropout-rate: 0.5
 zoneout-rate: 0.1
 epochs: 800
 patience: 0
+
+# other
+save-interval-epoch: 10
