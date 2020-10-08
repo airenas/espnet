@@ -15,7 +15,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     with codecs.open(args.text, 'r', 'utf-8') as fid:
         for line in fid.readlines():
-            id, _, content = line.split("|")
+            id, _, content, ph_content = line.split("|")
             clean_content = content.rstrip()
-
+            if args.trans_type == "phn":
+                clean_content = ph_content.rstrip()
             print("%s %s" % (id, clean_content))

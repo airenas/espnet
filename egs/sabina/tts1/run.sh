@@ -13,7 +13,7 @@ stage=-1
 stop_stage=100
 ngpu=1       # number of gpus ("0" uses cpu, otherwise use gpu)
 nj=24        # numebr of parallel jobs
-dumpdir=dump # directory to dump full features
+dumpdir=${work_dir}/dump # directory to dump full features
 verbose=1    # verbose option (if set > 0, get more log)
 N=0          # number of minibatches to be used (mainly for debugging). "0" uses all minibatches.
 seed=1       # random seed number
@@ -57,7 +57,7 @@ eval_tts_model=true                            # true: evaluate tts model, false
 wer=true                                       # true: evaluate CER & WER, false: evaluate only CER
 
 # root directory of db
-db_root=downloads
+db_root=${work_dir}/downloads
 corpus=sabina.v02
 
 # exp tag
@@ -84,8 +84,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     ### Task dependent. You have to make data the following preparation part by yourself.
     ### But you can utilize Kaldi recipes in most cases
     echo "stage 0: Data preparation"
-    local/data_prep.sh ${db_root}/${corpus} data/${trans_type}_train ${trans_type}
-    utils/validate_data_dir.sh --no-feats data/${trans_type}_train
+    local/data_prep.sh ${db_root}/${corpus} ${work_dir}/data/${trans_type}_train ${trans_type}
+    utils/validate_data_dir.sh --no-feats ${work_dir}/data/${trans_type}_train
 fi
 
 feat_tr_dir=${dumpdir}/${train_set}; mkdir -p ${feat_tr_dir}
@@ -97,7 +97,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "stage 1: Feature Generation"
 
     # Generate the fbank features; by default 80-dimensional fbanks on each frame
-    fbankdir=fbank
+    fbankdir=${work_dir}/fbank
     make_fbank.sh --cmd "${train_cmd}" --nj ${nj} \
         --fs ${fs} \
         --fmax "${fmax}" \
@@ -106,12 +106,12 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         --n_shift ${n_shift} \
         --win_length "${win_length}" \
         --n_mels ${n_mels} \
-        data/${trans_type}_train \
-        exp/${trans_type}_make_fbank/train \
+        ${work_dir}/data/${trans_type}_train \
+        ${work_dir}/exp/${trans_type}_make_fbank/train \
         ${fbankdir}
 
     # make a dev set
-    all_samples=$(wc -l < data/${trans_type}_train/wav.scp)
+    all_samples=$(wc -l < ${work_dir}/data/${trans_type}_train/wav.scp)
     dev_samples=$(python -c "print(int(${all_samples} * 0.05))")
     dev_eval_samples=$(python -c "print(${dev_samples} * 2)")
     train_samples=$(python -c "print(${all_samples} - ${dev_eval_samples})")
@@ -119,41 +119,41 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "Dev samples:   ${dev_samples}"
     echo "Eval samples:  ${dev_samples}"
     echo "Train samples: ${train_samples}"
-    utils/subset_data_dir.sh --last data/${trans_type}_train ${dev_eval_samples} data/${trans_type}_deveval
-    utils/subset_data_dir.sh --last data/${trans_type}_deveval ${dev_samples} data/${eval_set}
-    utils/subset_data_dir.sh --first data/${trans_type}_deveval ${dev_samples} data/${dev_set}
-    utils/subset_data_dir.sh --first data/${trans_type}_train ${train_samples} data/${train_set}
+    utils/subset_data_dir.sh --last ${work_dir}/data/${trans_type}_train ${dev_eval_samples} ${work_dir}/data/${trans_type}_deveval
+    utils/subset_data_dir.sh --last ${work_dir}/data/${trans_type}_deveval ${dev_samples} ${work_dir}/data/${eval_set}
+    utils/subset_data_dir.sh --first ${work_dir}/data/${trans_type}_deveval ${dev_samples} ${work_dir}/data/${dev_set}
+    utils/subset_data_dir.sh --first ${work_dir}/data/${trans_type}_train ${train_samples} ${work_dir}/data/${train_set}
 
     # compute statistics for global mean-variance normalization
-    compute-cmvn-stats scp:data/${train_set}/feats.scp data/${train_set}/cmvn.ark
+    compute-cmvn-stats scp:${work_dir}/data/${train_set}/feats.scp ${work_dir}/data/${train_set}/cmvn.ark
 
     # dump features for training
     dump.sh --cmd "$train_cmd" --nj ${nj} --do_delta false \
-        data/${train_set}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/${trans_type}_train ${feat_tr_dir}
+        ${work_dir}/data/${train_set}/feats.scp ${work_dir}/data/${train_set}/cmvn.ark ${work_dir}/exp/dump_feats/${trans_type}_train ${feat_tr_dir}
     dump.sh --cmd "$train_cmd" --nj ${nj} --do_delta false \
-        data/${dev_set}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/${trans_type}_dev ${feat_dt_dir}
+        ${work_dir}/data/${dev_set}/feats.scp ${work_dir}/data/${train_set}/cmvn.ark ${work_dir}/exp/dump_feats/${trans_type}_dev ${feat_dt_dir}
     dump.sh --cmd "$train_cmd" --nj ${nj} --do_delta false \
-        data/${eval_set}/feats.scp data/${train_set}/cmvn.ark exp/dump_feats/${trans_type}_eval ${feat_ev_dir}
+        ${work_dir}/data/${eval_set}/feats.scp ${work_dir}/data/${train_set}/cmvn.ark ${work_dir}/exp/dump_feats/${trans_type}_eval ${feat_ev_dir}
 fi
 
-dict=data/lang_1${trans_type}/${train_set}_units.txt
+dict=${work_dir}/data/lang_1${trans_type}/${train_set}_units.txt
 echo "dictionary: ${dict}"
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     ### Task dependent. You have to check non-linguistic symbols used in the corpus.
     echo "stage 2: Dictionary and Json Data Preparation"
-    mkdir -p data/lang_1${trans_type}/
+    mkdir -p ${work_dir}/data/lang_1${trans_type}/
     echo "<unk> 1" > ${dict} # <unk> must be 1, 0 will be used for "blank" in CTC
-    text2token.py -s 1 -n 1 --trans_type ${trans_type} data/${train_set}/text | cut -f 2- -d" " | tr " " "\n" \
+    text2token.py -s 1 -n 1 --trans_type ${trans_type} ${work_dir}/data/${train_set}/text | cut -f 2- -d" " | tr " " "\n" \
     | sort | uniq | grep -v -e '^\s*$' | awk '{print $0 " " NR+1}' >> ${dict}
     wc -l ${dict}
 
     # make json labels
     data2json.sh --feat ${feat_tr_dir}/feats.scp --trans_type ${trans_type} \
-         data/${train_set} ${dict} > ${feat_tr_dir}/data.json
+         ${work_dir}/data/${train_set} ${dict} > ${feat_tr_dir}/data.json
     data2json.sh --feat ${feat_dt_dir}/feats.scp --trans_type ${trans_type} \
-         data/${dev_set} ${dict} > ${feat_dt_dir}/data.json
+         ${work_dir}/data/${dev_set} ${dict} > ${feat_dt_dir}/data.json
     data2json.sh --feat ${feat_ev_dir}/feats.scp --trans_type ${trans_type} \
-         data/${eval_set} ${dict} > ${feat_ev_dir}/data.json
+         ${work_dir}/data/${eval_set} ${dict} > ${feat_ev_dir}/data.json
 fi
 
 
@@ -162,7 +162,7 @@ if [ -z ${tag} ]; then
 else
     expname=${train_set}_${backend}_${tag}
 fi
-expdir=exp/${expname}
+expdir=${work_dir}/exp/${expname}
 mkdir -p ${expdir}
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     echo "stage 3: Text-to-speech model training"
@@ -197,7 +197,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
            --minibatches ${N} \
            --report-interval-iters 15 \
            --outdir ${expdir}/results \
-           --tensorboard-dir tensorboard/${expname} \
+           --tensorboard-dir ${work_dir}/tensorboard/${expname} \
            --verbose ${verbose} \
            --seed ${seed} \
            --resume ${resume} \
