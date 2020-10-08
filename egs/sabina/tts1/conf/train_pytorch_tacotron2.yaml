@@ -37,7 +37,7 @@ reduction-factor: 1
 # minibatch related
 # batch-size: 32
 batch-sort-key: input # shuffle or input or output
-batch-bins: 550000
+batch-bins: 1900000
 maxlen-in: 150     # if input length  > maxlen-in, batchsize is reduced (if use "shuffle", not effect)
 maxlen-out: 400    # if output length > maxlen-out, batchsize is reduced (if use "shuffle", not effect)
 
