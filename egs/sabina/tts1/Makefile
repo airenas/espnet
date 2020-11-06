@@ -55,19 +55,20 @@ put-data:
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
 #####################################################################################
 final_name=sabina.$(trans_type).02
-final_model=$(work_dir)/$(final_name).tar.gz
+final_model=$(CURDIR)/$(work_dir)/$(final_name).tar.gz
 prepare_dir=$(work_dir)/prepared
+$(prepare_dir)/$(final_name):
+	mkdir -p $@
 $(prepare_dir)/$(final_name)/%: $(work_dir)/exp/$(exp)/results/% | $(prepare_dir)/$(final_name)
 	cp $< $@
 $(prepare_dir)/$(final_name)/vocab: $(work_dir)/data/lang_1$(trans_type)/$(trans_type)_train_no_dev_units.txt | $(prepare_dir)/$(final_name)
 	cp $< $@
-$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/model.json $(prepare_dir)/$(final_name)/model.loos.best \
+$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/model.json $(prepare_dir)/$(final_name)/model.loss.best \
 	$(prepare_dir)/$(final_name)/vocab
 	touch $@
-
 $(final_model): $(prepare_dir)/.done
-	tar -czvf $@ $(prepare_dir)/$(final_name)
-prepare-model: $(final_model)	
+	cd $(prepare_dir) && tar -czvf $@ $(final_name)
+prepare-model: $(final_model)
 #####################################################################################
 clean:
 	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
