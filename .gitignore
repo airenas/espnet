@@ -66,3 +66,5 @@ tools/activate_python.sh
 tools/sctk*
 tools/sph2pipe*
 egs/sabina/tts1/Makefile.options
+build/**
+tools/tts/**
