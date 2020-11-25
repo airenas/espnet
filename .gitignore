@@ -68,3 +68,4 @@ tools/sph2pipe*
 egs/sabina/tts1/Makefile.options
 build/**
 tools/tts/**
+egs2/sabina/tts1/p-03/**
