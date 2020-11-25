@@ -34,7 +34,6 @@ g2p=phn_lt_no_space # Include no word separator
     --n_fft "${n_fft}" \
     --n_shift "${n_shift}" \
     --token_type ${trans_type} \
-    --cleaner tacotron \
     --g2p "${g2p}" \
     --train_config "${train_config}" \
     --inference_config "${inference_config}" \
