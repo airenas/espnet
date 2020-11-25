@@ -86,7 +86,7 @@ prepare-fs2: $(work_dir)/.fs2.prepare.done
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
 pack-fastspeech2: $(work_dir)/.fs2.train.done
-	./run.sh --stage 8 --stop-stage 8 --train_config conf/tuning/train_fastspeech2.yaml
+	./run.sh --stage 8 --stop-stage 8 $(fastspeech2_params)
 
 train-one:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
