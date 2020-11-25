@@ -70,3 +70,4 @@ build/**
 tools/tts/**
 egs2/sabina/tts1/p-03/**
 **/Makefile.options
+**/.ipynb_checkpoints/**
