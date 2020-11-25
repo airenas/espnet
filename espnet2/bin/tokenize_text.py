@@ -230,6 +230,7 @@ def get_parser() -> argparse.ArgumentParser:
             None,
             "g2p_en",
             "g2p_en_no_space",
+            "phn_lt_no_space",
             "pyopenjtalk",
             "pyopenjtalk_kana",
             "pypinyin_g2p",

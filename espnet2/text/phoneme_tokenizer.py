@@ -79,13 +79,19 @@ class G2p_en:
         return phones
 
 
+def p_lt(text) -> List[str]:
+    text = text.rstrip()
+    phones = text.split(" ")
+    return phones
+
+
 class PhonemeTokenizer(AbsTokenizer):
     def __init__(
-        self,
-        g2p_type: Union[None, str],
-        non_linguistic_symbols: Union[Path, str, Iterable[str]] = None,
-        space_symbol: str = "<space>",
-        remove_non_linguistic_symbols: bool = False,
+            self,
+            g2p_type: Union[None, str],
+            non_linguistic_symbols: Union[Path, str, Iterable[str]] = None,
+            space_symbol: str = "<space>",
+            remove_non_linguistic_symbols: bool = False,
     ):
         assert check_argument_types()
         if g2p_type is None:
@@ -94,6 +100,8 @@ class PhonemeTokenizer(AbsTokenizer):
             self.g2p = G2p_en(no_space=False)
         elif g2p_type == "g2p_en_no_space":
             self.g2p = G2p_en(no_space=True)
+        elif g2p_type == "phn_lt_no_space":
+            self.g2p = p_lt
         elif g2p_type == "pyopenjtalk":
             self.g2p = pyopenjtalk_g2p
         elif g2p_type == "pyopenjtalk_kana":
@@ -133,7 +141,7 @@ class PhonemeTokenizer(AbsTokenizer):
                 if line.startswith(w):
                     if not self.remove_non_linguistic_symbols:
                         tokens.append(line[: len(w)])
-                    line = line[len(w) :]
+                    line = line[len(w):]
                     break
             else:
                 t = line[0]
