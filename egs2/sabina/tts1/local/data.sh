@@ -35,6 +35,11 @@ if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     local/data_download.sh "${db_root}"
 fi
 
+ct=3
+if [ "${trans_type}" = phn ]; then
+    ct=4
+fi
+
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     log "stage 0: Data Preparation"
     # set filenames
@@ -62,7 +67,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     # cleaning and phoneme conversion are performed on-the-fly during the training
     paste -d " " \
         <(cut -d "|" -f 1 < ${db_root}/${corpus}/metadata.csv) \
-        <(cut -d "|" -f 3 < ${db_root}/${corpus}/metadata.csv) \
+        <(cut -d "|" -f ${ct} < ${db_root}/${corpus}/metadata.csv) \
         > ${text}
 
     utils/validate_data_dir.sh --no-feats ${work_dir}/data/train
