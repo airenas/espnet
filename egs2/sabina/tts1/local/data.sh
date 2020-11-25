@@ -59,7 +59,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     find ${db_root}/${corpus} -follow -name "*.wav" | sort | while read -r filename;do
         id=$(basename ${filename} | sed -e "s/\.[^\.]*$//g")
         echo "${id} ${filename}" >> ${scp}
-        echo "${id} LJ" >> ${utt2spk}
+        echo "${id} SAB" >> ${utt2spk}
     done
     utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 
@@ -76,11 +76,13 @@ fi
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     log "stage 2: utils/subset_data_dir.sg"
     # make evaluation and devlopment sets
-    utils/subset_data_dir.sh --last ${work_dir}/data/train 500 ${work_dir}/data/deveval
-    utils/subset_data_dir.sh --last ${work_dir}/data/deveval 250 ${work_dir}/data/${eval_set}
-    utils/subset_data_dir.sh --first ${work_dir}/data/deveval 250 ${work_dir}/data/${train_dev}
-    n=$(( $(wc -l < ${work_dir}/data/train/wav.scp) - 500 ))
-    utils/subset_data_dir.sh --first ${work_dir}/data/train ${n} ${work_dir}/data/${train_set}
+    _ta=$(( ${test_count} * 2 ))
+    utils/subset_data_dir.sh --last ${work_dir}/data/train ${_ta} ${work_dir}/data/deveval
+    utils/subset_data_dir.sh --last ${work_dir}/data/deveval ${test_count} ${work_dir}/data/${eval_set}
+    utils/subset_data_dir.sh --first ${work_dir}/data/deveval ${test_count} ${work_dir}/data/${train_dev}
+    _n=$(( $(wc -l < ${work_dir}/data/train/wav.scp) - ${_ta} ))
+    echo "Test files: ${test_count}, Dev: ${test_count}, Train: ${_n}"
+    utils/subset_data_dir.sh --first ${work_dir}/data/train ${_n} ${work_dir}/data/${train_set}
 fi
 
 log "Successfully finished. [elapsed=${SECONDS}s]"

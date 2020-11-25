@@ -40,4 +40,5 @@ inference_config=conf/decode.yaml
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
     --srctexts "${work_dir}/data/${train_set}/text" \
+    --gpu_inference true \
     ${opts} "$@"
