@@ -46,7 +46,6 @@ train-all: $(work_dir)/.fs2.eval.done
 prepare-tracotron2: $(work_dir)/.trac2.prepare.done
 train-tracotron2: $(work_dir)/.trac2.train.done
 eval-tracotron2: $(work_dir)/.trac2.eval.done
-
 $(work_dir)/.trac2.train.done: $(work_dir)/.trac2.prepare.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 6 --trans_type $(trans_type)
 	touch $@
@@ -62,6 +61,9 @@ $(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
 	    --test_sets "tr_no_dev dev eval1"
 	touch $@
 
+pack-tracotron2: $(work_dir)/.trac2.train.done
+	./run.sh --stage 8 --stop-stage 8
+
 $(work_dir)/.fs2.prepare.done: $(work_dir)/.trac2.eval.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 5 --trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
@@ -73,44 +75,27 @@ $(work_dir)/.fs2.prepare.done: $(work_dir)/.trac2.eval.done
 $(work_dir)/.fs2.train.done: $(work_dir)/.fs2.prepare.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 6 --trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
-    	--tts_stats_dir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave/stats \
+    	--tts_stats_dir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave/stats
 	touch $@
 
 $(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 7 --stop-stage 7 --trans_type $(trans_type) \
-		--train_config conf/tuning/train_fastspeech2.yaml \
+		--train_config conf/tuning/train_fastspeech2.yaml
 	touch $@
+
 
 prepare-fs2: $(work_dir)/.fs2.prepare.done
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
+pack-fastspeech2: $(work_dir)/.fs2.train.done
+	./run.sh --stage 8 --stop-stage 8 --train_config conf/tuning/train_fastspeech2.yaml
 
 train-one:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
-
-train-many: 
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(from) --stop-stage $(to) --trans_type $(trans_type)
-
 #####################################################################################
 put-data:
 	$(SSH_CMD) "mkdir -p $(exp_dir)/downloads"
 	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
-#####################################################################################
-final_name=sabina.$(trans_type).02
-final_model=$(CURDIR)/$(work_dir)/$(final_name).tar.gz
-prepare_dir=$(work_dir)/prepared
-$(prepare_dir)/$(final_name):
-	mkdir -p $@
-$(prepare_dir)/$(final_name)/%: $(work_dir)/exp/$(exp)/results/% | $(prepare_dir)/$(final_name)
-	cp $< $@
-$(prepare_dir)/$(final_name)/vocab: $(work_dir)/data/lang_1$(trans_type)/$(trans_type)_train_no_dev_units.txt | $(prepare_dir)/$(final_name)
-	cp $< $@
-$(prepare_dir)/.done: $(prepare_dir)/$(final_name)/model.json $(prepare_dir)/$(final_name)/model.loss.best \
-	$(prepare_dir)/$(final_name)/vocab
-	touch $@
-$(final_model): $(prepare_dir)/.done
-	cd $(prepare_dir) && tar -czvf $@ $(final_name)
-prepare-model: $(final_model)
 #####################################################################################
 clean:
 	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
