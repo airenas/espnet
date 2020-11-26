@@ -63,7 +63,7 @@ $(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
 	    --test_sets "tr_no_dev dev eval1"
 	touch $@
 
-pack-tracotron2: $(work_dir)/.trac2.train.done
+pack-tracotron2: 
 	./run.sh --stage 8 --stop-stage 8
 
 fastspeech2_params=--trans_type $(trans_type) \
@@ -87,7 +87,7 @@ $(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
 prepare-fs2: $(work_dir)/.fs2.prepare.done
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
-pack-fastspeech2: $(work_dir)/.fs2.train.done
+pack-fastspeech2: 
 	./run.sh --stage 8 --stop-stage 8 $(fastspeech2_params)
 
 train-one:
