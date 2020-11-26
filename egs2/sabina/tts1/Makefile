@@ -100,7 +100,7 @@ put-data:
 clean:
 	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank $(work_dir)/tensorboard
-	rm -f $(work_dir)/.*
+	rm -f $(work_dir)/.*.*.*
 
 clean-data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
