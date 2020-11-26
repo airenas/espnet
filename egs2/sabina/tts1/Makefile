@@ -15,7 +15,9 @@ exp_dir=$(tts_dir)/espnet/egs2/sabina/tts1/$(work_dir)
 trans_type?=phn
 exp?=tts_train_raw_phn_none
 cuda?=0
+ngpu?=1
 test_count?=100
+inference_model?=train.loss.ave.pth
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads:
@@ -31,7 +33,7 @@ nvidia:
 #####################################################################################
 tensorboard:
 	$(SSH_TF_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
-		cd $(exp_dir); pwd; \
+		cd $(exp_dir)/exp/$(exp); pwd; \
 		tensorboard --logdir tensorboard/"
 
 jupyter:
