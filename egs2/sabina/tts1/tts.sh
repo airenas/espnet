@@ -267,6 +267,7 @@ if [ -z "${tts_exp}" ]; then
     tts_exp="${expdir}/tts_${tag}"
 fi
 
+echo Start: ${stage}, stop: ${stop_stage}
 
 # ========================== Main stages start from here. ==========================
 
