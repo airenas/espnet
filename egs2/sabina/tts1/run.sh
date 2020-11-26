@@ -26,10 +26,8 @@ inference_config=conf/decode.yaml
 
 # g2p=g2p_en # Include word separator
 # g2p=phn_lt_no_space # Include no word separator
-
 ./tts.sh \
     --lang lt \
-    --stage ${stage} --stop_stage ${stop_stage}
     --feats_type raw \
     --fs "${fs}" \
     --n_fft "${n_fft}" \
@@ -43,5 +41,5 @@ inference_config=conf/decode.yaml
     --srctexts "${work_dir}/data/${train_set}/text" \
     --gpu_inference true \
     --f0min 150 --f0max 300 \
-    --ngpu ${ngpu} --inference_model ${inference_model}
+    --ngpu ${ngpu} \
     ${opts} "$@"
