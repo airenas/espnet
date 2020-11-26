@@ -42,4 +42,5 @@ inference_config=conf/decode.yaml
     --srctexts "${work_dir}/data/${train_set}/text" \
     --gpu_inference true \
     --f0min 150 --f0max 300 \
+    --ngpu ${ngpu} --inference_model ${inference_model}
     ${opts} "$@"
