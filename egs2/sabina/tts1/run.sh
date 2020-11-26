@@ -29,7 +29,7 @@ inference_config=conf/decode.yaml
 
 ./tts.sh \
     --lang lt \
-    --stage ${stage} --stop_stage ${stop-stage}
+    --stage ${stage} --stop_stage ${stop_stage}
     --feats_type raw \
     --fs "${fs}" \
     --n_fft "${n_fft}" \
