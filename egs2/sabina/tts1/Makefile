@@ -64,7 +64,7 @@ $(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
 	touch $@
 
 pack-tracotron2: 
-	stage=8 stop_stage=8 ./run.sh
+	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model}
 
 fastspeech2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
@@ -88,7 +88,7 @@ prepare-fs2: $(work_dir)/.fs2.prepare.done
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
 pack-fastspeech2: 
-	./run.sh --stage 8 --stop-stage 8 $(fastspeech2_params)
+	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model} $(fastspeech2_params)
 
 train-one:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)

@@ -198,6 +198,9 @@ fi
 . ./path.sh
 . ./cmd.sh
 
+echo ngpu=${ngpu}
+echo inference_model=${inference_model}
+
 # Check feature type
 if [ "${feats_type}" = fbank ]; then
     data_feats="${dumpdir}/fbank"
