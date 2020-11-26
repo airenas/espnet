@@ -64,7 +64,7 @@ $(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
 	touch $@
 
 pack-tracotron2: 
-	./run.sh --stage 8 --stop-stage 8
+	stage=8 stop-stage=8 ./run.sh
 
 fastspeech2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
