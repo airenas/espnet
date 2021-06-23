@@ -71,3 +71,5 @@ tools/tts/**
 egs2/sabina/tts1/p-03/**
 **/Makefile.options
 **/.ipynb_checkpoints/**
+egs2/sabina/tts1/p-03-1/**
+egs2/sabina/test/**

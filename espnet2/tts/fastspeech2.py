@@ -7,6 +7,7 @@ from typing import Dict
 from typing import Sequence
 from typing import Tuple
 
+import numpy
 import torch
 import torch.nn.functional as F
 
@@ -494,8 +495,16 @@ class FastSpeech2(AbsTTS):
         else:
             e_outs = self.energy_predictor(hs, d_masks.unsqueeze(-1))
 
+        with open('energy.txt', "w") as f:
+            en = e_outs.cpu().numpy()
+            numpy.savetxt(f, en.reshape(en.shape[1]), fmt='%.5f')
+        with open('f0.txt', "w") as f:
+            en = p_outs.cpu().numpy()
+            numpy.savetxt(f, en.reshape(en.shape[1]), fmt='%.5f')
+
         if is_inference:
             d_outs = self.duration_predictor.inference(hs, d_masks)  # (B, Tmax)
+            print(f"d_outs = {d_outs}")
             # use prediction in inference
             p_embs = self.pitch_embed(p_outs.transpose(1, 2)).transpose(1, 2)
             e_embs = self.energy_embed(e_outs.transpose(1, 2)).transpose(1, 2)

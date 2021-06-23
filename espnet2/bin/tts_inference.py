@@ -129,6 +129,7 @@ class Text2Speech:
         text: Union[str, torch.Tensor, np.ndarray],
         speech: Union[torch.Tensor, np.ndarray] = None,
         durations: Union[torch.Tensor, np.ndarray] = None,
+        speed_control_alpha: float = None,
     ):
         assert check_argument_types()
 
@@ -144,9 +145,14 @@ class Text2Speech:
         if durations is not None:
             batch["durations"] = durations
 
+        cfg = self.decode_config
+        if speed_control_alpha is not None:
+            cfg = self.decode_config.copy()
+            cfg.update({"alpha": speed_control_alpha})
+
         batch = to_device(batch, self.device)
         outs, outs_denorm, probs, att_ws = self.model.inference(
-            **batch, **self.decode_config
+            **batch, **cfg
         )
 
         if att_ws is not None:
