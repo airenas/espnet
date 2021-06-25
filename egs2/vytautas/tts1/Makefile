@@ -18,7 +18,9 @@ cuda?=0
 ngpu?=1
 test_count?=100
 inference_model?=train.loss.ave.pth
-speaker=VYT
+speaker?=VYT
+f0min?=80
+f0max=220
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads:
