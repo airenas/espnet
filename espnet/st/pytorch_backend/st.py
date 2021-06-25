@@ -1,15 +1,12 @@
-#!/usr/bin/env python3
-# encoding: utf-8
-
 # Copyright 2019 Kyoto University (Hirofumi Inaguma)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Training/decoding definition for the speech translation task."""
 
+import itertools
 import json
 import logging
 import os
-import sys
 
 from chainer import training
 from chainer.training import extensions
@@ -49,11 +46,6 @@ from espnet.asr.pytorch_backend.asr import CustomUpdater
 import matplotlib
 
 matplotlib.use("Agg")
-
-if sys.version_info[0] == 2:
-    from itertools import izip_longest as zip_longest
-else:
-    from itertools import zip_longest as zip_longest
 
 
 class CustomConverter(ASRCustomConverter):
@@ -141,6 +133,7 @@ def train(args):
         model_class = dynamic_import(args.model_module)
         model = model_class(idim, odim, args)
     assert isinstance(model, STInterface)
+    total_subsampling_factor = model.get_total_subsampling_factor()
 
     # write model config
     if not os.path.exists(args.outdir):
@@ -174,6 +167,16 @@ def train(args):
     else:
         dtype = torch.float32
     model = model.to(device=device, dtype=dtype)
+
+    logging.warning(
+        "num. model params: {:,} (num. trained: {:,} ({:.1f}%))".format(
+            sum(p.numel() for p in model.parameters()),
+            sum(p.numel() for p in model.parameters() if p.requires_grad),
+            sum(p.numel() for p in model.parameters() if p.requires_grad)
+            * 100.0
+            / sum(p.numel() for p in model.parameters()),
+        )
+    )
 
     # Setup an optimizer
     if args.opt == "adadelta":
@@ -356,6 +359,7 @@ def train(args):
             converter=converter,
             transform=load_cv,
             device=device,
+            subsampling_factor=total_subsampling_factor,
         )
         trainer.extend(att_reporter, trigger=(1, "epoch"))
     else:
@@ -382,8 +386,7 @@ def train(args):
             converter=converter,
             transform=load_cv,
             device=device,
-            ikey="output",
-            iaxis=1,
+            subsampling_factor=total_subsampling_factor,
         )
         trainer.extend(ctc_reporter, trigger=(1, "epoch"))
     else:
@@ -645,7 +648,7 @@ def trans(args):
 
         def grouper(n, iterable, fillvalue=None):
             kargs = [iter(iterable)] * n
-            return zip_longest(*kargs, fillvalue=fillvalue)
+            return itertools.zip_longest(*kargs, fillvalue=fillvalue)
 
         # sort data if batchsize > 1
         keys = list(js.keys())
