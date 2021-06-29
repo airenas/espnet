@@ -56,7 +56,7 @@ $(work_dir)/.trac2.train.done: $(work_dir)/.trac2.prepare.done
 	touch $@
 
 $(work_dir)/.trac2.prepare.done:
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 0 --stop-stage 5 --trans_type $(trans_type)
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 0 --stop-stage 4 --trans_type $(trans_type)
 	touch $@
 
 $(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
@@ -71,11 +71,30 @@ pack-tracotron2:
 
 fastspeech2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
-    	--teacher_dumpdir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave \
+    	--teacher_dumpdir $(work_dir)/duration \
     	--tts_stats_dir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave/stats \
     	--write_collected_feats true
 
-$(work_dir)/.fs2.prepare.done: $(work_dir)/.trac2.eval.done
+$(work_dir)/duration/tr_no_dev:
+	mkdir -p $@
+$(work_dir)/duration/dev:
+	mkdir -p $@
+$(work_dir)/duration/eval1:
+	mkdir -p $@		
+
+$(work_dir)/duration/tr_no_dev/durations: | $(work_dir)/duration/tr_no_dev
+	cat $(work_dir)/dump/raw/tr_no_dev/text | cut -d ' ' -f1 > $@.files
+	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
+
+$(work_dir)/duration/dev/durations: | $(work_dir)/duration/dev
+	cat $(work_dir)/dump/raw/dev/text | cut -d ' ' -f1 > $@.files
+	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@	
+
+$(work_dir)/duration/eval1/durations: | $(work_dir)/duration/eval1
+	cat $(work_dir)/dump/raw/eval1/text | cut -d ' ' -f1 > $@.files
+	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
+
+$(work_dir)/.fs2.prepare.done: $(work_dir)/duration/tr_no_dev/durations $(work_dir)/duration/dev/durations $(work_dir)/duration/eval1/durations
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 5 $(fastspeech2_params)
 	touch $@
 
@@ -87,7 +106,7 @@ $(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 7 --stop-stage 7 $(fastspeech2_params)
 	touch $@
 
-prepare-fs2: $(work_dir)/.fs2.prepare.done
+prepare-fs2: $(work_dir)/.fs2.prepare.done 
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
 pack-fastspeech2: 
