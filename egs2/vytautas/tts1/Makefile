@@ -48,26 +48,11 @@ ssh:
 #####################################################################################
 train-all: $(work_dir)/.fs2.eval.done
 
-prepare-tracotron2: $(work_dir)/.trac2.prepare.done
-train-tracotron2: $(work_dir)/.trac2.train.done
-eval-tracotron2: $(work_dir)/.trac2.eval.done
-$(work_dir)/.trac2.train.done: $(work_dir)/.trac2.prepare.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 6 --trans_type $(trans_type)
-	touch $@
+prepare-initial: $(work_dir)/.initial.prepare.done
 
-$(work_dir)/.trac2.prepare.done:
+$(work_dir)/.initial.prepare.done:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 0 --stop-stage 4 --trans_type $(trans_type)
 	touch $@
-
-$(work_dir)/.trac2.eval.done: $(work_dir)/.trac2.train.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 7 --stop-stage 7 --trans_type $(trans_type) \
-		--tts_exp $(work_dir)/exp/tts_train_raw_phn_none \
-	    --inference_args "--use_teacher_forcing true" \
-	    --test_sets "tr_no_dev dev eval1"
-	touch $@
-
-pack-tracotron2: 
-	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model}
 
 fastspeech2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
@@ -82,15 +67,15 @@ $(work_dir)/duration/dev:
 $(work_dir)/duration/eval1:
 	mkdir -p $@		
 
-$(work_dir)/duration/tr_no_dev/durations: | $(work_dir)/duration/tr_no_dev
+$(work_dir)/duration/tr_no_dev/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/tr_no_dev
 	cat $(work_dir)/dump/raw/tr_no_dev/text | cut -d ' ' -f1 > $@.files
 	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
 
-$(work_dir)/duration/dev/durations: | $(work_dir)/duration/dev
+$(work_dir)/duration/dev/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/dev
 	cat $(work_dir)/dump/raw/dev/text | cut -d ' ' -f1 > $@.files
 	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@	
 
-$(work_dir)/duration/eval1/durations: | $(work_dir)/duration/eval1
+$(work_dir)/duration/eval1/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/eval1
 	cat $(work_dir)/dump/raw/eval1/text | cut -d ' ' -f1 > $@.files
 	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
 
