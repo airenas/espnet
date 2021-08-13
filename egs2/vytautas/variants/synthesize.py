@@ -6,15 +6,22 @@ import time
 import numpy as np
 import torch
 from parallel_wavegan.utils import load_model
-from scipy.io.wavfile import write
 
 from espnet2.bin.tts_inference import Text2Speech
 
 fs = 22050
 
 
+def to_int16(data):
+    i = np.iinfo(np.int16)
+    abs_max = 2 ** (i.bits - 1)
+    offset = i.min + abs_max
+    return (data * abs_max + offset).clip(i.min, i.max).astype(np.int16)
+
+
 def write_wav(name, data):
-    write(name, fs, data.astype(np.int16))
+    from scipy.io.wavfile import write
+    write(name, fs, to_int16(data))
 
 
 def rtf(start, end, w_len):
