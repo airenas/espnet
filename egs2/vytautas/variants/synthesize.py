@@ -76,9 +76,9 @@ def main(argv):
     for line in sys.stdin:
         s_line = line.strip()
         lines.append(s_line)
-    phones = lines.join(" ").strip()
+    phones = " ".join(lines).strip()
 
-    print("Phones: %s" % phones, file=sys.stderr)
+    print("Phones: == %s ==" % phones, file=sys.stderr)
     print("Loading AM from : %s" % args.am, file=sys.stderr)
     am = loadAM(args.am, args.dev)
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
