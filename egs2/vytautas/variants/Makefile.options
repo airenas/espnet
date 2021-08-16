@@ -1,10 +1,19 @@
 ## Acoustic models
-ams=$(patsubst %,am-%,V02 SB)
+ams=$(patsubst %,am-%,V02 SB V03a V04 V03b)
 am-V02-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-02/exp/tts_train_fastspeech2_raw_phn_none
 am-V02-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 976epoch 84epoch)
 
 am-SB-dir=/home/avaiciunas/.cache/espnet/p03/p-03/exp/tts_train_fastspeech2_raw_phn_none
 am-SB-vrs=$(patsubst %,amv-%,train.loss.ave_5best)
+
+am-V03a-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-03a/exp/tts_train_fastspeech2_raw_phn_none
+am-V03a-vrs=$(patsubst %,amv-%,412epoch)
+
+am-V03b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-03b/exp/tts_train_fastspeech2_raw_phn_none
+am-V03b-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 997epoch 288epoch)
+
+am-V04-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-04/exp/tts_train_fastspeech2_raw_phn_none
+am-V04-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 197epoch)
 
 ## Vocoders
 vocs=$(patsubst %,voc-%,V02 LJ SB)
