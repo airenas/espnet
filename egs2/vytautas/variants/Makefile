@@ -7,8 +7,8 @@ mp3_files=$(patsubst %,$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).mp3,$(sentences)
 $(out_dir):
 	mkdir -p $@
 $(out_dir)/%.mp3: $(out_dir)/%.wav
-	ffmpeg -i $< $@_
-	mv $@_ $@
+	ffmpeg -i $< $@.mp3
+	mv $@.mp3 $@
 $(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: | $(out_dir)
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl
