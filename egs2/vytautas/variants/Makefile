@@ -9,7 +9,7 @@ $(out_dir):
 $(out_dir)/%.mp3: $(out_dir)/%.wav
 	ffmpeg -i $< $@.mp3
 	mv $@.mp3 $@
-$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
+$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl q| $(out_dir)
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl
 	mv $@_ $@
@@ -27,3 +27,10 @@ build: $(mp3_files)
 	echo $(mp3_files)
 build-all:
 	$(MAKE) $(ams)
+
+#####################################################################################
+mp3s:
+	mkdir -p $@
+
+dwn-mp3: | mp3s
+	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/variants/out/*.mp3 mp3s
