@@ -9,7 +9,7 @@ $(out_dir):
 $(out_dir)/%.mp3: $(out_dir)/%.wav
 	ffmpeg -i $< $@.mp3
 	mv $@.mp3 $@
-$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl q| $(out_dir)
+$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl
 	mv $@_ $@
