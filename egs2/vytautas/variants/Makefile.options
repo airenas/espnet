@@ -10,7 +10,7 @@ am-V03a-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-03a/exp/tts_tra
 am-V03a-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 997epoch 288epoch)
 
 am-V03b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-03b/exp/tts_train_fastspeech2_raw_phn_none
-am-V03b-vrs=$(patsubst %,amv-%,412epoch)
+am-V03b-vrs=$(patsubst %,amv-%,430epoch)
 
 am-V04-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-04/exp/tts_train_fastspeech2_raw_phn_none
 am-V04-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 197epoch)
