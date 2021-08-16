@@ -1,0 +1,9 @@
+## Acoustic models
+ams=$(patsubst %,am-%,V02)
+am-V02-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-02/exp/tts_train_fastspeech2_raw_phn_none
+am-V02-vrs=$(patsubst %,amv-%,1000epoch train.loss.ave_5best valid.loss.ave_5best 976epoch 84epoch)
+
+## Vocoders
+vocs=$(patsubst %,voc-%,V02)
+voc-V02-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/v02/exp/train_nodev_ljspeech_parallel_wavegan.v3
+voc-V02-vrs=$(patsubst %,vocv-%,1000000 2000000 3000000 2010000 1990000 1500000 2500000 500000)
