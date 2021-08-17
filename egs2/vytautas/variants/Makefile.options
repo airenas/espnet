@@ -1,3 +1,4 @@
+corpus=/home/airenas/hdd/prozodija/vytautas.v04/wav/
 ## Acoustic models
 ams=$(patsubst %,am-%,V02 SB V03a V04 V03b)
 am-V02-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-02/exp/tts_train_fastspeech2_raw_phn_none
