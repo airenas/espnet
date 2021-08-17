@@ -34,3 +34,13 @@ mp3s:
 
 dwn-mp3: | mp3s
 	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/variants/out/*.mp3 mp3s
+
+out.html: mp3s display_html.py
+	ls -1 mp3s/*.mp3 | python display_html.py > $@_
+	mv $@_ $@
+
+generate_html: out.html
+
+clean:
+	rm -f out.html
+
