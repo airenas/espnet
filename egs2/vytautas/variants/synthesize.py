@@ -28,6 +28,14 @@ def rtf(start, end, w_len):
     return (end - start) / (w_len / fs)
 
 
+def log_time(f, p1, p2):
+    start_t = time.time()
+    res = f(p1, p2)
+    end_t = time.time()
+    print(f"elapsed = {(end_t - start_t):5f}s")
+    return res
+
+
 def loadAM(amFile, dev):
     am_dir = os.path.dirname(amFile)
     mf = {'train_config': os.path.join(am_dir, 'config-run.yaml'),
@@ -87,9 +95,9 @@ def main(argv):
 
     print("Phones: == %s ==" % phones, file=sys.stderr)
     print("Loading AM from : %s" % args.am, file=sys.stderr)
-    am = loadAM(args.am, args.dev)
+    am = log_time(loadAM, args.am, args.dev)
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
-    voc = loadVocoder(args.voc, args.dev)
+    voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
     data = synthesize(phones, am, voc)
     print("Saving audio", file=sys.stderr)
