@@ -12,10 +12,12 @@ $(out_dir)/%.mp3: $(out_dir)/%.wav
 	mv $@.mp3 $@
 $(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
 ifneq ($(dev), cpu)
-	flock .cuda.lock -c "echo acquired cuda lock"
-endif
+	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"
+else
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)
+endif
 	mv $@_ $@
 #####################################################################################
 am-%:
