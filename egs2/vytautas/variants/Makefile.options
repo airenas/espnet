@@ -28,7 +28,7 @@ voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
 voc-SB-vrs=$(patsubst %,vocv-%,700000)
 
 voc-V02HiFi-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/hf
-voc-V02HiFi-vrs=$(patsubst %,vocv-%,10000 110000 500000 600000 700000 800000 900000)
+voc-V02HiFi-vrs=$(patsubst %,vocv-%,10000 110000 500000 600000 700000 800000 900000 1000000)
 
 voc-V03a-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_parallel_wavegan.v3
-voc-V03a-vrs=$(patsubst %,vocv-%,100000 200000 450000 625000)
+voc-V03a-vrs=$(patsubst %,vocv-%,100000 200000 450000 625000 800000)
