@@ -8,7 +8,7 @@ dev?=cpu
 $(out_dir):
 	mkdir -p $@
 $(out_dir)/%.mp3: $(out_dir)/%.wav
-	ffmpeg -i $< $@.mp3
+	ffmpeg -y -i $< $@.mp3
 	mv $@.mp3 $@
 $(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
 ifneq ($(dev), cpu)
