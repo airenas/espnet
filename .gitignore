@@ -75,3 +75,5 @@ tools/MBROLA*
 tools/festival*
 tools/speech_tools*
 tools/phonemizer*
+egs2/vytautas/variants/mp3s/*
+egs2/vytautas/variants/out.html
