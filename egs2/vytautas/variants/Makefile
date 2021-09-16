@@ -1,7 +1,7 @@
 -include Makefile.options
 
 out_dir?=out
-sentences?=s01 s02 s03 s04 s05
+sentences?=s01 s02 s03 s04 s05 s06 s07
 mp3_files=$(patsubst %,$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).mp3,$(sentences))
 dev?=cpu
 #####################################################################################
