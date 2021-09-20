@@ -43,7 +43,7 @@ voc-V03a-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/v03a
 voc-V03a-vrs=$(patsubst %,vocv-%,200000 450000 800000)
 
 voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-V05Style-vrs=$(patsubst %,vocv-%,500000 1000000 1400000)
+voc-V05Style-vrs=$(patsubst %,vocv-%,500000 1000000 1400000 1500000)
 
 voc-V05-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_parallel_wavegan.v3
-voc-V05-vrs=$(patsubst %,vocv-%,1800000)
+voc-V05-vrs=$(patsubst %,vocv-%,2100000)
