@@ -1,0 +1,22 @@
+corpus=/home/airenas/hdd/prozodija/laimis.v01/wav/
+## Acoustic models
+ams=$(patsubst %,am-%,SB V05b L_V01)
+am-SB-dir=/home/avaiciunas/.cache/espnet/p03/p-03/exp/tts_train_fastspeech2_raw_phn_none
+am-SB-vrs=$(patsubst %,amv-%,train.loss.ave_5best)
+
+am-V05b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-05b/exp/tts_train_fastspeech2_raw_phn_none
+am-V05b-vrs=$(patsubst %,amv-%,train.loss.ave_5best valid.loss.ave_5best 1000epoch)
+
+am-L_V01-dir=/home/avaiciunas/gfs/tts/espnet/egs2/laimis/tts1/v-01/exp/tts_train_fastspeech2_raw_phn_none
+am-L_V01-vrs=$(patsubst %,amv-%,40epoch)
+
+## Vocoders
+vocs=$(patsubst %,voc-%,SB V05Style L_V01Style)
+voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
+voc-SB-vrs=$(patsubst %,vocv-%,700000)
+
+voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-V05Style-vrs=$(patsubst %,vocv-%,1500000)
+
+voc-L_V01Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/laimis/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-L_V01Style-vrs=$(patsubst %,vocv-%,10000)
