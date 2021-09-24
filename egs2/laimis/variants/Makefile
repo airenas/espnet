@@ -41,7 +41,7 @@ mp3s:
 dwn-mp3: | mp3s
 	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/laimis/variants/out/*.mp3 mp3s
 
-gt_files=$(patsubst %,mp3s/%_gt.mp3,$(sentences))
+gt_files=$(patsubst %,mp3s/%_gt.mp3,s08 s09)
 make-gt: $(gt_files)
 mp3s/s08_gt.mp3: | mp3s
 	ffmpeg -i $(corpus)/lab_LAI_CIZ_A030_000.wav $@	
