@@ -46,4 +46,4 @@ voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/
 voc-V05Style-vrs=$(patsubst %,vocv-%,500000 1000000 1400000 1500000)
 
 voc-V05-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_parallel_wavegan.v3
-voc-V05-vrs=$(patsubst %,vocv-%,2100000)
+voc-V05-vrs=$(patsubst %,vocv-%,2100000 2475000)
