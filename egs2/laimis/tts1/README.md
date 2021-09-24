@@ -6,6 +6,14 @@ Written by Airenas Vaičiūnas @ VMU, Kaunas (2021)
 
 This is the recipe of Lithuanian single male speaker TTS corpus.
 
+### Train
+
+```bash
+make train-fs2
+## or
+nohup make train-fs2 > v01.log &
+```
+
 See the following pages for the usage:
 - [How to run the recipe](../../TEMPLATE/tts1/README.md#how-to-run)
 - [How to train FastSpeech](../../TEMPLATE/tts1/README.md#fastspeech-training)
