@@ -9,7 +9,7 @@ SSH_CMD=ssh -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 SSH_TF_CMD=ssh -L 6006:localhost:6006 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 SSH_JN_CMD=ssh -L 8888:localhost:8888 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
 #####################################################################################
-work_dir?=g-01
+work_dir?=v-01
 tts_dir=$(HOME_DIR)/gfs/tts
 exp_dir=$(tts_dir)/espnet/egs2/laimis/tts1/$(work_dir)
 trans_type?=phn
