@@ -8,7 +8,7 @@ am-V05b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-05b/exp/tts_tra
 am-V05b-vrs=$(patsubst %,amv-%,1000epoch)
 
 am-L-V01-dir=/home/avaiciunas/gfs/tts/espnet/egs2/laimis/tts1/v-01/exp/tts_train_fastspeech2_raw_phn_none
-am-L-V01-vrs=$(patsubst %,amv-%,70epoch)
+am-L-V01-vrs=$(patsubst %,amv-%,360epoch)
 
 ## Vocoders
 vocs=$(patsubst %,voc-%,SB V05Style L-V01Style)
@@ -19,4 +19,4 @@ voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/
 voc-V05Style-vrs=$(patsubst %,vocv-%,1500000)
 
 voc-L-V01Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/laimis/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-L-V01Style-vrs=$(patsubst %,vocv-%,20000)
+voc-L-V01Style-vrs=$(patsubst %,vocv-%,120000)
