@@ -18,6 +18,11 @@ def add_script():
     return res
 
 
+def exists_file(f):
+    print("File %s - exists: %s" % (f, os.path.isfile(f)) , file=sys.stderr)
+    return os.path.isfile(f)
+
+
 def add_styles(vocs, ams):
     res = "<style>"
     res += ":root\n{\n"
@@ -49,8 +54,12 @@ def add_table(name, d, ons):
 
 
 def get_sentence_html(s, vocabs, ams):
-    res = s.get("name") + " GT: <audio controls preload=\"none\"><source src=\"mp3s/" + s.get("name") + \
-          "_gt.mp3\" type=\"audio/mpeg\"></audio><br/>\n"
+    gt_fn = os.path.join("mp3s", s.get("name") + "_gt.mp3")
+    if exists_file(gt_fn):
+        res = s.get("name") + " GT: <audio controls preload=\"none\"><source src=\"" + gt_fn + \
+          "\" type=\"audio/mpeg\"></audio><br/>\n"
+    else:
+        res = s.get("name") + " GT: -<br/>\n"      
     res += "<table><thead><tr><th></th>"
     vocs = sorted(s.get("vocs"))
     for voc in vocs:
