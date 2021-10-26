@@ -19,4 +19,4 @@ voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/
 voc-V05Style-vrs=$(patsubst %,vocv-%,1500000)
 
 voc-L-V01Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/laimis/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-L-V01Style-vrs=$(patsubst %,vocv-%,600000)
+voc-L-V01Style-vrs=$(patsubst %,vocv-%,600000, 1000000, 1500000, 2000000)
