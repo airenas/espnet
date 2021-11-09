@@ -1,7 +1,7 @@
 -include Makefile.options
 
 out_dir?=out
-sentences?=s01 s02 s03 s04 s05 s06 s07 s08 s09
+sentences?=s01 s02 s03 s04 s05 s06 s07
 mp3_files=$(patsubst %,$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).mp3,$(sentences))
 dev?=cpu
 #####################################################################################
@@ -39,14 +39,20 @@ mp3s:
 	mkdir -p $@
 
 dwn-mp3: | mp3s
-	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/laimis/variants/out/*.mp3 mp3s
+	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/lina/variants/out/*.mp3 mp3s
 
-gt_files=$(patsubst %,mp3s/%_gt.mp3,s08 s09)
+gt_files=$(patsubst %,mp3s/%_gt.mp3,s01 s02 s03 s04 s05)
 make-gt: $(gt_files)
-mp3s/s08_gt.mp3: | mp3s
-	ffmpeg -i $(corpus)/lab_LAI_CIZ_A030_000.wav $@	
-mp3s/s09_gt.mp3: | mp3s
-	ffmpeg -i $(corpus)/lab_LAI_CIZ_A030_001.wav $@
+mp3s/s01_gt.mp3: | mp3s
+	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_000.wav $@	
+mp3s/s02_gt.mp3: | mp3s
+	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_001.wav $@	
+mp3s/s03_gt.mp3: | mp3s
+	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_002.wav $@		
+mp3s/s04_gt.mp3: | mp3s
+	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_003.wav $@	
+mp3s/s05_gt.mp3: | mp3s
+	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_004.wav $@	
 
 put-online:
 	rsync -P out.html airenas@sinteze.intelektika.lt:~/intelektikaLt-deploy/deploy/c8/tts/html/lina-samples/
@@ -61,4 +67,4 @@ generate_html: out.html
 
 clean:
 	rm -f out.html
-
+	rm -rf mp3s
