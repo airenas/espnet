@@ -79,3 +79,5 @@ egs2/vytautas/variants/mp3s/*
 egs2/vytautas/variants/out.html
 egs2/laimis/variants/out.html
 egs2/laimis/variants/mp3s/**
+egs2/lina/variants/out.html
+egs2/lina/variants/mp3s/**
