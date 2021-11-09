@@ -1,0 +1,16 @@
+corpus=/home/airenas/hdd/prozodija/lina.v01/wav/
+## Acoustic models
+ams=$(patsubst %,am-%,SB LI-V01)
+am-SB-dir=/home/avaiciunas/.cache/espnet/p03/p-03/exp/tts_train_fastspeech2_raw_phn_none
+am-SB-vrs=$(patsubst %,amv-%,train.loss.ave_5best)
+
+am-LI-V01-dir=/home/avaiciunas/gfs/tts/espnet/egs2/lina/tts1/v-01/exp/tts_train_fastspeech2_raw_phn_none
+am-LI-V01-vrs=$(patsubst %,amv-%,270epoch)
+
+## Vocoders
+vocs=$(patsubst %,voc-%,SB LI-V01Style)
+voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
+voc-SB-vrs=$(patsubst %,vocv-%,700000)
+
+voc-LI-V01Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/lina/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-LI-V01Style-vrs=$(patsubst %,vocv-%,100000)
