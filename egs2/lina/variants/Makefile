@@ -4,6 +4,7 @@ out_dir?=out
 sentences?=s01 s02 s03 s04 s05 s06 s07
 mp3_files=$(patsubst %,$(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).mp3,$(sentences))
 dev?=cpu
+maxcuda?=2
 #####################################################################################
 $(out_dir):
 	mkdir -p $@
@@ -12,9 +13,14 @@ $(out_dir)/%.mp3: $(out_dir)/%.wav
 	mv $@.mp3 $@
 $(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
 ifneq ($(dev), cpu)
-	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
-		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"
+ifeq ($(dev), cuda)
 else
+	a=$$(($$RANDOM%$(maxcuda))); flock .cuda.$$a.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev "cuda:$$a"
+endif
+	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"		
+else 
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)
 endif
