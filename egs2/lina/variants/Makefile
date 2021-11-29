@@ -14,8 +14,9 @@ $(out_dir)/%.mp3: $(out_dir)/%.wav
 $(out_dir)/%_$(am)-$(amv)_$(voc)-$(vocv).wav: $(am-$(am)-dir)/$(amv).pth $(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl | $(out_dir)
 ifneq ($(dev), cpu)
 ifeq ($(dev), cuda)
-	a=$$(($$RANDOM%$(maxcuda))); flock .cuda.$$a.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
-		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev cuda:$$a"
+	a=$$(awk 'BEGIN{srand();printf("%d", $(maxcuda)*rand())}'); \
+		flock .cuda.$$a.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+			--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev cuda:$$a"
 else
 	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"		
