@@ -1,11 +1,14 @@
-corpus=/home/airenas/hdd/prozodija/lina.v04b/wav/
+corpus=/home/airenas/hdd/prozodija/lina.v01/wav/
 ## Acoustic models
-ams=$(patsubst %,am-%,SB LI-V04b)
+ams=$(patsubst %,am-%,SB LI-V04b LI-V01)
 am-SB-dir=/home/avaiciunas/.cache/espnet/p03/p-03/exp/tts_train_fastspeech2_raw_phn_none
 am-SB-vrs=$(patsubst %,amv-%,train.loss.ave_5best)
 
 am-LI-V04b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/lina/tts1/v-04b/exp/tts_train_fastspeech2_raw_phn_none
 am-LI-V04b-vrs=$(patsubst %,amv-%,1500epoch train.loss.ave_5best valid.loss.ave_5best)
+
+am-LI-V01-dir=/home/avaiciunas/gfs/tts/espnet/egs2/lina/tts1/v-01/exp/tts_train_fastspeech2_raw_phn_none
+am-LI-V01-vrs=$(patsubst %,amv-%,1500epoch)
 
 ## Vocoders
 vocs=$(patsubst %,voc-%,SB LI-V04bStyle)
