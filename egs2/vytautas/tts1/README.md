@@ -1,10 +1,25 @@
-# Sabina Text-to-Speech recipe
+# Vytautas Text-to-Speech recipe
 
-Written by Airenas Vaičiūnas @ VMU, Kaunas (2020/11/24)
+Written by Airenas Vaičiūnas @ VMU, Kaunas (2022)
 
 ## tts1 recipe
 
-This is the recipe of Lithuanian single female speaker TTS corpus.
+This is the recipe of Lithuanian single male speaker TTS corpus.
+
+### Train
+
+```bash
+make train-fs2
+## or
+nohup make train-fs2 > v01.log &
+```
+
+### Pack model
+
+```bash
+make pack-fastspeech2 inference_model=1500epoch.pth
+```
+
 
 See the following pages for the usage:
 - [How to run the recipe](../../TEMPLATE/tts1/README.md#how-to-run)
