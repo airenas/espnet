@@ -1,6 +1,6 @@
 corpus=/home/airenas/hdd/prozodija/vytautas.v05/wav/
 ## Acoustic models
-ams=$(patsubst %,am-%,V02 SB V03a V04 V03b V05b V05 V05a V06b)
+ams=$(patsubst %,am-%,V06b)
 am-V02-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-02/exp/tts_train_fastspeech2_raw_phn_none
 am-V02-vrs=$(patsubst %,amv-%,train.loss.ave_5best valid.loss.ave_5best)
 
@@ -29,7 +29,7 @@ am-V06b-dir=/home/avaiciunas/gfs/tts/espnet/egs2/vytautas/tts1/v-06b/exp/tts_tra
 am-V06b-vrs=$(patsubst %,amv-%,train.loss.ave_5best valid.loss.ave_5best 1500epoch)
 
 ## Vocoders
-vocs=$(patsubst %,voc-%,V05Style)
+vocs=$(patsubst %,voc-%,V06bStyle)
 
-voc-V05Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-V05Style-vrs=$(patsubst %,vocv-%,1500000)
+voc-V06bStyle-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-V06bStyle-vrs=$(patsubst %,vocv-%,10000)
