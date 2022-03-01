@@ -16,4 +16,4 @@ voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
 voc-SB-vrs=$(patsubst %,vocv-%,700000)
 
 voc-LI-V04bStyle-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/lina/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-LI-V04bStyle-vrs=$(patsubst %,vocv-%,200000 300000 500000)
+voc-LI-V04bStyle-vrs=$(patsubst %,vocv-%,200000 300000 500000 1000000)
