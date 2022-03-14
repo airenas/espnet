@@ -59,7 +59,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     find ${db_root}/${corpus} -follow -name "*.wav" | sort | while read -r filename;do
         id=$(basename ${filename} | sed -e "s/\.[^\.]*$//g")
         echo "${id} ${filename}" >> ${scp}
-        echo "${id} SAB" >> ${utt2spk}
+        echo "${id} ${speaker}" >> ${utt2spk}
     done
     utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 

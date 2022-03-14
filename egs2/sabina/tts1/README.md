@@ -6,6 +6,21 @@ Written by Airenas Vaičiūnas @ VMU, Kaunas (2020/11/24)
 
 This is the recipe of Lithuanian single female speaker TTS corpus.
 
+### Train
+
+```bash
+make train-fs2
+## or
+nohup make train-fs2 > v01.log &
+```
+
+### Pack model
+
+```bash
+make pack-fastspeech2 inference_model=1500epoch.pth
+```
+
+
 See the following pages for the usage:
 - [How to run the recipe](../../TEMPLATE/tts1/README.md#how-to-run)
 - [How to train FastSpeech](../../TEMPLATE/tts1/README.md#fastspeech-training)
