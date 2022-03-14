@@ -1,4 +1,4 @@
-corpus=/home/airenas/hdd/prozodija/laimis.v01/wav/
+corpus=/home/airenas/hdd/prozodija/laimis.v02a/wav/
 ## Acoustic models
 ams=$(patsubst %,am-%,L-V01 L-V02a)
 am-L-V01-dir=/home/avaiciunas/gfs/tts/espnet/egs2/laimis/tts1/v-01/exp/tts_train_fastspeech2_raw_phn_none

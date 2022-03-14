@@ -32,4 +32,4 @@ am-V06b-vrs=$(patsubst %,amv-%,train.loss.ave_5best valid.loss.ave_5best 1500epo
 vocs=$(patsubst %,voc-%,V06bStyle)
 
 voc-V06bStyle-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/vytautas/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-V06bStyle-vrs=$(patsubst %,vocv-%,100000)
+voc-V06bStyle-vrs=$(patsubst %,vocv-%,1000000)
