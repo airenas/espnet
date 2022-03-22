@@ -13,4 +13,4 @@ voc-L-V02aStyle-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/laimis/voc1/exp
 voc-L-V02aStyle-vrs=$(patsubst %,vocv-%,500000 1000000)
 
 voc-L-V01Style-dir=/home/avaiciunas/.cache/parallel_wavegan/laimis.style.1500000-01
-voc-L-V01Style-vrs=$(patsubst %,vocv-%,1500000)
+voc-L-V01Style-vrs=$(patsubst %,vocv-%,2000000)
