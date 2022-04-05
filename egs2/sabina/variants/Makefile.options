@@ -12,5 +12,5 @@ vocs=$(patsubst %,voc-%,SB SAB-V04Style)
 voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
 voc-SB-vrs=$(patsubst %,vocv-%,700000)
 
-voc-SAB-V04Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/lina/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-SAB-V04Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/sabina/voc1/exp/train_nodev_ljspeech_style_melgan.v1
 voc-SAB-V04Style-vrs=$(patsubst %,vocv-%,500000 700000 800000 900000 1000000)
