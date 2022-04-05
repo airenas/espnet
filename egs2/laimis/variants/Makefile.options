@@ -10,7 +10,7 @@ am-L-V02a-vrs=$(patsubst %,amv-%,train.loss.ave_5best valid.loss.ave_5best 1500e
 ## Vocoders
 vocs=$(patsubst %,voc-%,L-V02aStyle L-V01Style)
 voc-L-V02aStyle-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/laimis/voc1/exp/train_nodev_ljspeech_style_melgan.v1
-voc-L-V02aStyle-vrs=$(patsubst %,vocv-%,500000 800000 900000 1000000)
+voc-L-V02aStyle-vrs=$(patsubst %,vocv-%,500000 800000 900000 1000000 1100000)
 
 voc-L-V01Style-dir=/home/avaiciunas/.cache/parallel_wavegan/laimis.style.v01-2000000
 voc-L-V01Style-vrs=$(patsubst %,vocv-%,2000000)
