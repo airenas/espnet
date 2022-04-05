@@ -1,0 +1,16 @@
+corpus=/home/airenas/hdd/prozodija/sabina.v04/wav/
+## Acoustic models
+ams=$(patsubst %,am-%,SB SAB-V04)
+am-SB-dir=/home/avaiciunas/.cache/espnet/p03/p-03/exp/tts_train_fastspeech2_raw_phn_none
+am-SB-vrs=$(patsubst %,amv-%,train.loss.ave_5best)
+
+am-SAB-V04-dir=/home/avaiciunas/gfs/tts/espnet/egs2/sabina/tts1/v-04/exp/tts_train_fastspeech2_raw_phn_none
+am-SAB-V04-vrs=$(patsubst %,amv-%,1500epoch train.loss.ave_5best valid.loss.ave_5best)
+
+## Vocoders
+vocs=$(patsubst %,voc-%,SB SAB-V04Style)
+voc-SB-dir=/home/avaiciunas/.cache/parallel_wavegan/sabina.pwg.01-700000
+voc-SB-vrs=$(patsubst %,vocv-%,700000)
+
+voc-SAB-V04Style-dir=/home/avaiciunas/gfs/tts/ParallelWaveGAN/egs/lina/voc1/exp/train_nodev_ljspeech_style_melgan.v1
+voc-SAB-V04Style-vrs=$(patsubst %,vocv-%,500000 700000 800000 900000 1000000)
