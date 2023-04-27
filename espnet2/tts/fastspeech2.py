@@ -2,7 +2,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 """Fastspeech2 related modules for ESPnet2."""
-
+import os
 from typing import Dict
 from typing import Sequence
 from typing import Tuple
@@ -495,12 +495,20 @@ class FastSpeech2(AbsTTS):
         else:
             e_outs = self.energy_predictor(hs, d_masks.unsqueeze(-1))
 
-        with open('energy.txt', "w") as f:
+        with open(os.getenv("WD", ".") + '/energy.txt', "w") as f:
             en = e_outs.cpu().numpy()
             numpy.savetxt(f, en.reshape(en.shape[1]), fmt='%.5f')
-        with open('f0.txt', "w") as f:
-            en = p_outs.cpu().numpy()
-            numpy.savetxt(f, en.reshape(en.shape[1]), fmt='%.5f')
+        if os.getenv("LOAD_F0", "") != "":
+            with open(os.getenv("LOAD_F0"), "r") as f:
+                en = numpy.loadtxt(f)
+                p_outs1 = torch.from_numpy(en)
+                p_outs1 = p_outs1.type(torch.float32)
+                p_outs = torch.reshape(p_outs1, (1, p_outs1.shape[0], 1))
+                print("loaded f0 from " + os.getenv("LOAD_F0"))
+        else:
+            with open(os.getenv("WD", ".") + '/f0.txt', "w") as f:
+                en = p_outs.cpu().numpy()
+                numpy.savetxt(f, en.reshape(en.shape[1]), fmt='%.5f')
 
         if is_inference:
             d_outs = self.duration_predictor.inference(hs, d_masks)  # (B, Tmax)
