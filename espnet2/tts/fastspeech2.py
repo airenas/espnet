@@ -149,6 +149,7 @@ class FastSpeech2(AbsTTS):
         self.use_scaled_pos_enc = use_scaled_pos_enc
         self.use_gst = use_gst
         self.spk_embed_dim = spk_embed_dim
+        self.other_pitch = None
         if self.spk_embed_dim is not None:
             self.spk_embed_integration_type = spk_embed_integration_type
 
@@ -486,7 +487,9 @@ class FastSpeech2(AbsTTS):
         # forward duration predictor and variance predictors
         d_masks = make_pad_mask(ilens).to(xs.device)
 
-        if self.stop_gradient_from_pitch_predictor:
+        if self.other_pitch:
+            p_outs = self.other_pitch(d_masks)
+        elif self.stop_gradient_from_pitch_predictor:
             p_outs = self.pitch_predictor(hs.detach(), d_masks.unsqueeze(-1))
         else:
             p_outs = self.pitch_predictor(hs, d_masks.unsqueeze(-1))

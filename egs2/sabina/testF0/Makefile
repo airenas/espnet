@@ -9,9 +9,15 @@ am?=sabina.v04.fastspeech2.1500-01.zip
 $(wd):
 	mkdir -p $@
 
+# $(wd)/out.am: $(data) | $(wd)
+# 	LOAD_F0=$(load_f0) WD=$(wd) PYTHONPATH=/home/airenas/projects/espnet python ./run_am.py --data $(data) --model $(am) --out $@_
+# 	mv $@_ $@
+
 $(wd)/out.am: $(data) | $(wd)
-	LOAD_F0=$(load_f0) WD=$(wd) PYTHONPATH=/home/airenas/projects/espnet python ./run_am.py --data $(data) --model $(am) --out $@_
+	LOAD_F0=$(load_f0) WD=$(wd) PYTHONPATH=/home/airenas/projects/espnet python ./run_am2.py --data $(data) --model $(am) \
+	    --model2 vytautas.v06b.fastspeech2.1500-01.zip --out $@_
 	mv $@_ $@
+
 
 $(wd)/out.wav: $(wd)/out.am
 	. ~/miniconda3/etc/profile.d/conda.sh; conda activate pwgan-cuda; \
