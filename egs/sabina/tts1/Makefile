@@ -23,7 +23,7 @@ $(work_dir)/downloads:
 init-data: | $(work_dir)/downloads	
 #####################################################################################
 logs:
-	$(SSH_CMD) "cd $(exp_dir) && tail -f exp/$(exp)/train.log"
+	$(SSH_CMD) "cd $(exp_dir) && tail -n 40 -f exp/$(exp)/train.log"
 
 nvidia:
 	$(SSH_CMD) "watch nvidia-smi"

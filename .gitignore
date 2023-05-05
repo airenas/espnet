@@ -26,7 +26,6 @@ test_spm.model
 .vscode*
 *.vim
 *.swp
-*.nfs*
 
 # recipe related
 egs*/*/*/data*
@@ -40,14 +39,8 @@ egs*/*/*/mfcc
 egs*/*/*/stft
 egs*/*/*/tensorboard
 egs*/*/*/wav*
-egs*/*/*/score*
-egs*/*/*/nltk*
-egs*/*/*/.cache*
-egs*/*/*/pretrained_models*
-egs*/fisher_callhome_spanish/*/local/mapping*
 
 # tools related
-tools/chainer
 tools/bin
 tools/include
 tools/lib
@@ -55,7 +48,6 @@ tools/lib64
 tools/bats-core
 tools/chainer_ctc/
 tools/kaldi*
-tools/activate_python.sh
 tools/miniconda.sh
 tools/moses/
 tools/mwerSegmenter/
@@ -70,22 +62,23 @@ tools/PESQ*
 tools/hts_engine_API*
 tools/open_jtalk*
 tools/pyopenjtalk*
-tools/tdmelodic_openjtalk*
-tools/s3prl
 tools/sctk*
 tools/sph2pipe*
+egs/sabina/tts1/Makefile.options
+build/**
+tools/tts/**
+egs2/sabina/tts1/p-03/**
+**/Makefile.options
+**/.ipynb_checkpoints/**
 tools/espeak-ng*
 tools/MBROLA*
 tools/festival*
 tools/speech_tools*
 tools/phonemizer*
-tools/py3mmseg
-tools/anaconda
-tools/ice-g2p
-tools/fairseq
-tools/RawNet
-tools/._*
-tools/ice-g2p*
-tools/fairseq*
-tools/featbin*
-tools/miniconda
+egs2/vytautas/variants/mp3s/*
+egs2/vytautas/variants/out.html
+egs2/laimis/variants/out.html
+egs2/laimis/variants/mp3s/**
+egs2/lina/variants/out.html
+egs2/lina/variants/mp3s/**
+egs2/sabina/variants/mp3s/**
