@@ -35,7 +35,7 @@ nvidia:
 	$(SSH_CMD) "watch -n 10 nvidia-smi"
 #####################################################################################
 tensorboard:
-	$(SSH_TF_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
+	$(SSH_TF_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate esp2023; \
 		cd $(exp_dir)/exp/$(exp); pwd; \
 		tensorboard --logdir tensorboard/"
 
