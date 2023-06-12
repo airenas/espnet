@@ -62,8 +62,8 @@ mp3s/s05_gt.mp3: | mp3s
 	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_004.wav $@	
 
 put-online:
-	rsync -P out.html airenas@sinteze.intelektika.lt:~/intelektikaLt-deploy/deploy/c8/tts/html/lina-samples-v04b/
-	rsync -rP mp3s airenas@sinteze.intelektika.lt:~/intelektikaLt-deploy/deploy/c8/tts/html/lina-samples-v04b/
+	rsync -P out.html @(online_dir)/
+	rsync -rP mp3s @(online_dir)/
 
 
 out.html: mp3s display_html.py
