@@ -16,9 +16,11 @@ ifneq ($(dev), cpu)
 ifeq ($(dev), cuda)
 	a=$$(awk 'BEGIN{srand();printf("%d", $(maxcuda)*rand())}'); \
 		flock .cuda.$$a.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+			--am-f0 "$(am-$(am)-f0-model)" \
 			--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev cuda:$$a"
 else
 	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
+		--am-f0 "$(am-$(am)-f0-model)" \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"		
 endif		
 else 
@@ -62,8 +64,8 @@ mp3s/s05_gt.mp3: | mp3s
 	ffmpeg -i $(corpus)/lab_LIN_SIR_A080_004.wav $@	
 
 put-online:
-	rsync -P out.html @(online_dir)/
-	rsync -rP mp3s @(online_dir)/
+	rsync -P out.html $(online_dir)/
+	rsync -rP mp3s $(online_dir)/
 
 
 out.html: mp3s display_html.py

@@ -63,15 +63,28 @@ def loadVocoder(vocFile, dev):
     return vocoder
 
 
-def synthesize(phones, am, voc):
+def synthesize(phones, am, voc, am_f0):
     with torch.no_grad():
         start_am = time.time()
+        if am_f0 is not None:
+            am2_res = am_f0(phones)
+            end_am2 = time.time()
+
+            def pitch(x, y):
+                return am2_res["pitch"].unsqueeze(0)
+            del am.model.tts.pitch_predictor
+            am.model.tts.pitch_predictor = pitch
+
         am_res = am(phones)
         end_am = time.time()
         wav = voc.inference(am_res["feat_gen"])
         end_voc = time.time()
     print(f"RTF all = {rtf(start_am, end_voc, len(wav)):5f}, time = {(end_voc - start_am):5f}s")
-    print(f"RTF am  = {rtf(start_am, end_am, len(wav)):5f}, time = {(end_am - start_am):5f}s")
+    if am_f0 is not None:
+        print(f"RTF am2 = {rtf(start_am, end_am2, len(wav)):5f}, time = {(end_am2 - start_am):5f}s")
+        print(f"RTF am  = {rtf(end_am2, end_am, len(wav)):5f}, time = {(end_am - end_am2):5f}s")
+    else:
+        print(f"RTF am  = {rtf(start_am, end_am, len(wav)):5f}, time = {(end_am - start_am):5f}s")
     print(f"RTF voc = {rtf(end_am, end_voc, len(wav)):5f}, time = {(end_voc - end_am):5f}s")
     return wav.view(-1).cpu().numpy()
 
@@ -82,6 +95,7 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--out", default='', type=str, help="Output File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
+    parser.add_argument("--am-f0", name="am_f0", default='', type=str, help="AM File for f0", required=False)
     parser.add_argument("--voc", default='', type=str, help="Vocoder File", required=True)
     parser.add_argument("--dev", default='cpu', type=str, help="Device: cpu | cuda | cuda:1", required=False)
     args = parser.parse_args(args=argv)
@@ -96,10 +110,14 @@ def main(argv):
     print("Phones: == %s ==" % phones, file=sys.stderr)
     print("Loading AM from : %s" % args.am, file=sys.stderr)
     am = log_time(loadAM, args.am, args.dev)
+    am_f0 = None
+    if args.am_f0:
+        print("Loading AM2 from : %s" % args.am_f0, file=sys.stderr)
+        am_f0 = log_time(loadAM, args.am_f0, args.dev)
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
-    data = synthesize(phones, am, voc)
+    data = synthesize(phones, am, voc, am_f0)
     print("Saving audio", file=sys.stderr)
     write_wav(args.out, data)
 
