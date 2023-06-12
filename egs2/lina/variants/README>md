@@ -1,0 +1,9 @@
+## Generate final file variants
+
+### Prepare  env
+
+```bash
+conda create --name <env_name> python=3.7
+conda activate <env_name>
+pip install -r requirements.txt
+```

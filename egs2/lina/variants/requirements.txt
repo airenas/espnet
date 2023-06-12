@@ -1,0 +1,2 @@
+espnet==202304
+parallel-wavegan==0.5.5

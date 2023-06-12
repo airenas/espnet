@@ -66,9 +66,9 @@ def loadVocoder(vocFile, dev):
 def synthesize(phones, am, voc):
     with torch.no_grad():
         start_am = time.time()
-        wav, c, *_ = am(phones)
+        am_res = am(phones)
         end_am = time.time()
-        wav = voc.inference(c)
+        wav = voc.inference(am_res["feat_gen"])
         end_voc = time.time()
     print(f"RTF all = {rtf(start_am, end_voc, len(wav)):5f}, time = {(end_voc - start_am):5f}s")
     print(f"RTF am  = {rtf(start_am, end_am, len(wav)):5f}, time = {(end_am - start_am):5f}s")
