@@ -95,7 +95,7 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--out", default='', type=str, help="Output File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
-    parser.add_argument("--am-f0", name="am_f0", default='', type=str, help="AM File for f0", required=False)
+    parser.add_argument("--am-f0", default='', type=str, help="AM File for f0", required=False)
     parser.add_argument("--voc", default='', type=str, help="Vocoder File", required=True)
     parser.add_argument("--dev", default='cpu', type=str, help="Device: cpu | cuda | cuda:1", required=False)
     args = parser.parse_args(args=argv)
