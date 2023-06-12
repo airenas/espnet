@@ -46,7 +46,7 @@ mp3s:
 	mkdir -p $@
 
 dwn-mp3: | mp3s
-	rsync -r -P avaiciunas@agpu:/home/avaiciunas/gfs/tts/espnet/egs2/lina/variants/out/*.mp3 mp3s
+	rsync -r -P $(remote_res) mp3s
 
 gt_files=$(patsubst %,mp3s/%_gt.mp3,s01 s02 s03 s04 s05)
 make-gt: $(gt_files)
