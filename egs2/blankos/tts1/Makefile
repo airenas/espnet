@@ -21,6 +21,7 @@ inference_model?=train.loss.ave.pth
 speaker?=BLA
 f0min?=45
 f0max=195
+max_wav_duration?=20
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads:

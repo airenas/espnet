@@ -36,4 +36,5 @@ inference_config=conf/decode.yaml
     --gpu_inference true \
     --f0min ${f0min} --f0max ${f0max} \
     --ngpu ${ngpu} \
+    --max_wav_duration ${max_wav_duration} \
     ${opts} "$@"
