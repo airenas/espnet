@@ -128,9 +128,9 @@ def main(argv):
     parser.add_argument("--out", default='', type=str, help="Output File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
     parser.add_argument("--am2-f0", default='', type=str, help="AM File for f0", required=False)
-    parser.add_argument("--am2-energy", default=False, type=bool, help="Take energy from AM File for f0",
+    parser.add_argument("--am2-energy", default=False, help="Take energy from AM File for f0",
                         required=False, action='store_true')
-    parser.add_argument("--am2-duration", default=False, type=bool, help="Take duration from AM File for f0",
+    parser.add_argument("--am2-duration", default=False, help="Take duration from AM File for f0",
                         required=False, action='store_true')
     parser.add_argument("--voc", default='', type=str, help="Vocoder File", required=True)
     parser.add_argument("--dev", default='cpu', type=str, help="Device: cpu | cuda | cuda:1", required=False)
@@ -147,9 +147,9 @@ def main(argv):
     print("Loading AM from : %s" % args.am, file=sys.stderr)
     am = log_time(loadAM, args.am, args.dev)
     am_f0 = None
-    if args.am_f0:
-        print("Loading AM2 from : %s" % args.am_f0, file=sys.stderr)
-        am_f0 = log_time(loadAM, args.am_f0, args.dev)
+    if args.am2_f0:
+        print("Loading AM2 from : %s" % args.am2_f0, file=sys.stderr)
+        am_f0 = log_time(loadAM, args.am2_f0, args.dev)
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
