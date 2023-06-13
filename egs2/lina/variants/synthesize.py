@@ -63,7 +63,22 @@ def loadVocoder(vocFile, dev):
     return vocoder
 
 
-def synthesize(phones, am, voc, am_f0):
+class cfg:
+    def __init__(self, take_f0, take_energy, take_duration):
+        self.take_f0 = take_f0
+        self.take_energy = take_energy
+        self.take_duration = take_duration
+
+
+class infFaker:
+    def __init__(self, data):
+        self.data = data
+
+    def inference(self, x, y):
+        return self.data
+
+
+def synthesize(phones, am, voc, am_f0, cfg: cfg):
     with torch.no_grad():
         start_am = time.time()
         if am_f0 is not None:
@@ -72,8 +87,25 @@ def synthesize(phones, am, voc, am_f0):
 
             def pitch(x, y):
                 return am2_res["pitch"].unsqueeze(0)
-            del am.model.tts.pitch_predictor
-            am.model.tts.pitch_predictor = pitch
+
+            def energy(x, y):
+                return am2_res["energy"].unsqueeze(0)
+
+            if cfg.take_f0:
+                del am.model.tts.pitch_predictor
+                am.model.tts.pitch_predictor = pitch
+                print("Use pitch from am2")
+
+            if cfg.take_energy:
+                del am.model.tts.energy_predictor
+                am.model.tts.energy_predictor = energy
+                print("Use energy from am2")
+
+            if cfg.take_duration:
+                dur = infFaker(data=am2_res["duration"].unsqueeze(0))
+                del am.model.tts.duration_predictor
+                am.model.tts.duration_predictor = dur
+                print("Use duration from am2")
 
         am_res = am(phones)
         end_am = time.time()
@@ -95,7 +127,11 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--out", default='', type=str, help="Output File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
-    parser.add_argument("--am-f0", default='', type=str, help="AM File for f0", required=False)
+    parser.add_argument("--am2-f0", default='', type=str, help="AM File for f0", required=False)
+    parser.add_argument("--am2-energy", default=False, type=bool, help="Take energy from AM File for f0",
+                        required=False, action='store_true')
+    parser.add_argument("--am2-duration", default=False, type=bool, help="Take duration from AM File for f0",
+                        required=False, action='store_true')
     parser.add_argument("--voc", default='', type=str, help="Vocoder File", required=True)
     parser.add_argument("--dev", default='cpu', type=str, help="Device: cpu | cuda | cuda:1", required=False)
     args = parser.parse_args(args=argv)
@@ -117,7 +153,8 @@ def main(argv):
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
-    data = synthesize(phones, am, voc, am_f0)
+    data = synthesize(phones, am, voc, am_f0,
+                      cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
     print("Saving audio", file=sys.stderr)
     write_wav(args.out, data)
 
