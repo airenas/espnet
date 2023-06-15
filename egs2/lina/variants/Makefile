@@ -16,16 +16,16 @@ ifneq ($(dev), cpu)
 ifeq ($(dev), cuda)
 	a=$$(awk 'BEGIN{srand();printf("%d", $(maxcuda)*rand())}'); \
 		flock .cuda.$$a.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
-			$(am-$(am)-f0-model) \
+			$(am-$(am)-f0-model) --out-f0 $@.f0 \
 			--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev cuda:$$a"
 else
 	flock .cuda.lock -c "cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
-		$(am-$(am)-f0-model) \
+		$(am-$(am)-f0-model) --out-f0 $@.f0 \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)"		
 endif		
 else 
 	cat sentences/$*.txt | python synthesize.py --out $@_ --am $(am-$(am)-dir)/$(amv).pth \
-		$(am-$(am)-f0-model) \
+		$(am-$(am)-f0-model) --out-f0 $@.f0 \
 		--voc=$(voc-$(voc)-dir)/checkpoint-$(vocv)steps.pkl --dev $(dev)
 endif
 	mv $@_ $@

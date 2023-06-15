@@ -118,7 +118,7 @@ def synthesize(phones, am, voc, am_f0, cfg: cfg):
     else:
         print(f"RTF am  = {rtf(start_am, end_am, len(wav)):5f}, time = {(end_am - start_am):5f}s")
     print(f"RTF voc = {rtf(end_am, end_voc, len(wav)):5f}, time = {(end_voc - end_am):5f}s")
-    return wav.view(-1).cpu().numpy()
+    return wav.view(-1).cpu().numpy(), am_res["pitch"].view(-1).cpu().numpy()
 
 
 def main(argv):
@@ -126,6 +126,7 @@ def main(argv):
                                      epilog="E.g. cat input.txt | " + sys.argv[0] + "",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--out", default='', type=str, help="Output File", required=True)
+    parser.add_argument("--out-f0", default='', type=str, help="Output f0 File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
     parser.add_argument("--am2-f0", default='', type=str, help="AM File for f0", required=False)
     parser.add_argument("--am2-energy", default=False, help="Take energy from AM File for f0",
@@ -153,9 +154,12 @@ def main(argv):
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
-    data = synthesize(phones, am, voc, am_f0,
+    data, f0 = synthesize(phones, am, voc, am_f0,
                       cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
     print("Saving audio", file=sys.stderr)
+    if args.out_f0:
+        with open(args.out_f0, "w") as f:
+            f.write(f0)
     write_wav(args.out, data)
 
     print("Done", file=sys.stderr)
