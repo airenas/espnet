@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 
-from chainerx import math
+import math
 
 
 def main(argv):
@@ -22,7 +22,7 @@ def main(argv):
     std = math.sqrt(var)
     d = np.loadtxt(args.in_f0)
     f0 = np.exp(d * std + mean)
-    print("Mean: {}, min: {}, max{}".format(f0.mean(), f0.min(), f0.max()), file=sys.stderr)
+    print("Mean: {}, min: {}, max: {}".format(f0.mean(), f0.min(), f0.max()), file=sys.stderr)
 
     np.savetxt(args.out, f0, delimiter=',', fmt="%.5f")
     print("Done", file=sys.stderr)
