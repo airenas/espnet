@@ -158,8 +158,7 @@ def main(argv):
                       cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
     print("Saving audio", file=sys.stderr)
     if args.out_f0:
-        with open(args.out_f0, "w") as f:
-            f.write(f0)
+        np.savetxt(args.out_f0, f0, delimiter=',', fmt="%.5f")
     write_wav(args.out, data)
 
     print("Done", file=sys.stderr)
