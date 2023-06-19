@@ -118,7 +118,7 @@ def synthesize(phones, am, voc, am_f0, cfg: cfg):
     else:
         print(f"RTF am  = {rtf(start_am, end_am, len(wav)):5f}, time = {(end_am - start_am):5f}s")
     print(f"RTF voc = {rtf(end_am, end_voc, len(wav)):5f}, time = {(end_voc - end_am):5f}s")
-    return wav.view(-1).cpu().numpy(), am_res["pitch"].view(-1).cpu().numpy()
+    return wav.view(-1).cpu().numpy(), am_res["pitch"].view(-1).cpu().numpy(), am_res["duration"].view(-1).cpu().numpy()
 
 
 def main(argv):
@@ -154,11 +154,12 @@ def main(argv):
     print("Loading Vocoder from : %s" % args.voc, file=sys.stderr)
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
-    data, f0 = synthesize(phones, am, voc, am_f0,
-                      cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
+    data, f0, dur = synthesize(phones, am, voc, am_f0,
+                               cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
     print("Saving audio", file=sys.stderr)
     if args.out_f0:
         np.savetxt(args.out_f0, f0, delimiter=',', fmt="%.5f")
+        np.savetxt(args.out_f0 + ".dur", dur, delimiter=',', fmt="%d")
     write_wav(args.out, data)
 
     print("Done", file=sys.stderr)
