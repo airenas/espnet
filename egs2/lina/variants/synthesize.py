@@ -79,16 +79,16 @@ class infFaker:
         return self.data
 
 
-def interpolate_f0(data):
+def interpolate_f0(inp):
+    data = inp
     for i, x in enumerate(data):
-        if x < -4:
+        # print(x)
+        if x < -1.4:
             if 0 < i < (len(data) - 1):
                 data[i] = (data[i - 1] + data[i + 1]) / 2
-            elif 0 < i:
+            elif i == 0:
                 data[i] = data[i + 1]
-            else:
-                data[i] = data[i - 1]
-            print(f"F0 = {x:5f} -> {data[i]:5f}")
+            print(f"F0 = {x} -> {data[i]}")
     return data
 
 
@@ -101,7 +101,7 @@ def synthesize(phones, am, voc, am_f0, cfg: cfg):
 
             def pitch(x, y):
                 if cfg.interpolate_f0:
-                    return interpolate_f0(am2_res["pitch"].unsqueeze(0))
+                    return interpolate_f0(am2_res["pitch"]).unsqueeze(0)
                 return am2_res["pitch"].unsqueeze(0)
 
             def energy(x, y):
