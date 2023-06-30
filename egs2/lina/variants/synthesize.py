@@ -64,10 +64,11 @@ def loadVocoder(vocFile, dev):
 
 
 class cfg:
-    def __init__(self, take_f0, take_energy, take_duration):
+    def __init__(self, take_f0, take_energy, take_duration, interpolate_f0):
         self.take_f0 = take_f0
         self.take_energy = take_energy
         self.take_duration = take_duration
+        self.interpolate_f0 = interpolate_f0
 
 
 class infFaker:
@@ -78,6 +79,19 @@ class infFaker:
         return self.data
 
 
+def interpolate_f0(data):
+    for i, x in enumerate(data):
+        if x < -4:
+            if 0 < i < (len(data) - 1):
+                data[i] = (data[i - 1] + data[i + 1]) / 2
+            elif 0 < i:
+                data[i] = data[i + 1]
+            else:
+                data[i] = data[i - 1]
+            print(f"F0 = {x:5f} -> {data[i]:5f}")
+    return data
+
+
 def synthesize(phones, am, voc, am_f0, cfg: cfg):
     with torch.no_grad():
         start_am = time.time()
@@ -86,6 +100,8 @@ def synthesize(phones, am, voc, am_f0, cfg: cfg):
             end_am2 = time.time()
 
             def pitch(x, y):
+                if cfg.interpolate_f0:
+                    return interpolate_f0(am2_res["pitch"].unsqueeze(0))
                 return am2_res["pitch"].unsqueeze(0)
 
             def energy(x, y):
@@ -133,6 +149,8 @@ def main(argv):
                         required=False, action='store_true')
     parser.add_argument("--am2-duration", default=False, help="Take duration from AM File for f0",
                         required=False, action='store_true')
+    parser.add_argument("--am2-f0-interpolate", default=False, help="Do interpolate zero f0",
+                        required=False, action='store_true')
     parser.add_argument("--voc", default='', type=str, help="Vocoder File", required=True)
     parser.add_argument("--dev", default='cpu', type=str, help="Device: cpu | cuda | cuda:1", required=False)
     args = parser.parse_args(args=argv)
@@ -155,7 +173,8 @@ def main(argv):
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
     data, f0, dur = synthesize(phones, am, voc, am_f0,
-                               cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, take_duration=args.am2_duration))
+                               cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy,
+                                       take_duration=args.am2_duration, interpolate_f0=args.am2_f0_interpolate))
     print("Saving audio", file=sys.stderr)
     if args.out_f0:
         np.savetxt(args.out_f0, f0, delimiter=',', fmt="%.5f")
