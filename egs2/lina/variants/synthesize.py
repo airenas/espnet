@@ -64,11 +64,12 @@ def loadVocoder(vocFile, dev):
 
 
 class cfg:
-    def __init__(self, take_f0, take_energy, take_duration, interpolate_f0):
+    def __init__(self, take_f0, take_energy, take_duration, interpolate_f0, f0_scale=1):
         self.take_f0 = take_f0
         self.take_energy = take_energy
         self.take_duration = take_duration
         self.interpolate_f0 = interpolate_f0
+        self.f0_scale = f0_scale
 
 
 class infFaker:
@@ -113,9 +114,10 @@ def synthesize(phones, am, voc, am_f0, cfg: cfg):
             end_am2 = time.time()
 
             def pitch(x, y):
+                res = am2_res["pitch"] 
                 if cfg.interpolate_f0:
-                    return interpolate_f0(am2_res["pitch"]).unsqueeze(0)
-                return am2_res["pitch"].unsqueeze(0)
+                    res = interpolate_f0(res)
+                return (res * cfg.f0_scale).unsqueeze(0)
 
             def energy(x, y):
                 return am2_res["energy"].unsqueeze(0)
@@ -158,6 +160,7 @@ def main(argv):
     parser.add_argument("--out-f0", default='', type=str, help="Output f0 File", required=True)
     parser.add_argument("--am", default='', type=str, help="AM File", required=True)
     parser.add_argument("--am2-f0", default='', type=str, help="AM File for f0", required=False)
+    parser.add_argument("--am2-f0-scale", default=1, type=float, help="AM f0 scale", required=False)
     parser.add_argument("--am2-energy", default=False, help="Take energy from AM File for f0",
                         required=False, action='store_true')
     parser.add_argument("--am2-duration", default=False, help="Take duration from AM File for f0",
@@ -186,8 +189,9 @@ def main(argv):
     voc = log_time(loadVocoder, args.voc, args.dev)
     print("Synthesizing...", file=sys.stderr)
     data, f0, dur = synthesize(phones, am, voc, am_f0,
-                               cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy,
-                                       take_duration=args.am2_duration, interpolate_f0=args.am2_f0_interpolate))
+                               cfg=cfg(take_f0=am_f0 is not None, take_energy=args.am2_energy, 
+                                       take_duration=args.am2_duration, interpolate_f0=args.am2_f0_interpolate, 
+                                       f0_scale=args.am2_f0_scale))
     print("Saving audio", file=sys.stderr)
     if args.out_f0:
         np.savetxt(args.out_f0, f0, delimiter=',', fmt="%.5f")
