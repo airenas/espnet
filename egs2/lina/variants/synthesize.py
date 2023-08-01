@@ -78,17 +78,30 @@ class infFaker:
     def inference(self, x, y):
         return self.data
 
+def get_next(start, data):
+    for i in range(start + 1, len(data)):
+        if data[i] >= -1.4:
+            return data[i], i - start    
+    return data[start], 0
+
 
 def interpolate_f0(inp):
     data = inp
+    pi = -1
     for i, x in enumerate(data):
         # print(x)
         if x < -1.4:
-            if 0 < i < (len(data) - 1):
-                data[i] = (data[i - 1] + data[i + 1]) / 2
-            elif i == 0:
-                data[i] = data[i + 1]
+            v, c = get_next(i, data)
+            if c > 0 and pi > -1:
+                data[i] = data[pi] + (v - data[pi]) / (c + 1)
+                pi = i
+            elif pi == -1:
+                data[i] = v
+            elif c == 0:
+                data[i] = v    
             print(f"F0 = {x} -> {data[i]}")
+        else:
+            pi = i    
     return data
 
 
