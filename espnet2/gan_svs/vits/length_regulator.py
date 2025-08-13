@@ -48,7 +48,7 @@ class LengthRegulator(torch.nn.Module):
 
         output = pad_list(output, self.pad_value)  # (B, D_frame, dim)
         output = torch.transpose(output, 1, 2)
-        return output, torch.LongTensor(mel_len)
+        return output, torch.tensor(mel_len, dtype=torch.long)
 
     def expand(self, batch, predicted, use_state_info=False):
         """Expand input mel-spectrogram based on the predicted duration.
@@ -61,7 +61,6 @@ class LengthRegulator(torch.nn.Module):
         Returns:
             Tensor: Output tensor (D_frame, dim).
         """
-        predicted = torch.squeeze(predicted)
         out = list()
 
         for i, vec in enumerate(batch):

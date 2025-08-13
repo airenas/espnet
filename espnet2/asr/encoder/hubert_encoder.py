@@ -18,7 +18,7 @@ from typing import List, Optional, Tuple
 import torch
 import yaml
 from filelock import FileLock
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
@@ -33,7 +33,7 @@ class TorchAudioHuBERTPretrainEncoder(AbsEncoder):
             Valid values are "group_norm" or "layer_norm".
         extractor_conv_layer_config: Configuration of convolution layers in feature
             extractor. List of convolution configuration,
-            i.e. [(output_channel, kernel_size, stride), ...]
+            i.e. [[output_channel, kernel_size, stride], ...]
         extractor_conv_bias: Whether to include bias term to each convolution
             operation.
         encoder_embed_dim: The dimension of embedding in encoder.
@@ -85,18 +85,19 @@ class TorchAudioHuBERTPretrainEncoder(AbsEncoder):
         https://pytorch.org/audio/stable/generated/torchaudio.models.hubert_pretrain_model.html#torchaudio.models.hubert_pretrain_model
     """
 
+    @typechecked
     def __init__(
         self,
         input_size: int = None,
         extractor_mode: str = "group_norm",
-        extractor_conv_layer_config: Optional[List[Tuple[int, int, int]]] = [
-            (512, 10, 5),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 3, 2),
-            (512, 2, 2),
-            (512, 2, 2),
+        extractor_conv_layer_config: Optional[List[List[int]]] = [
+            [512, 10, 5],
+            [512, 3, 2],
+            [512, 3, 2],
+            [512, 3, 2],
+            [512, 3, 2],
+            [512, 2, 2],
+            [512, 2, 2],
         ],
         extractor_conv_bias: bool = False,
         encoder_embed_dim: int = 768,
@@ -131,7 +132,6 @@ class TorchAudioHuBERTPretrainEncoder(AbsEncoder):
         finetuning: bool = False,
         freeze_encoder_updates: int = 0,
     ):
-        assert check_argument_types()
         super().__init__()
         try:
             import torchaudio
@@ -182,7 +182,7 @@ class TorchAudioHuBERTPretrainEncoder(AbsEncoder):
         if finetuning:
             for p in self.hubert_pretrain_model.wav2vec2.feature_extractor.parameters():
                 p.requires_grad = False
-        self.register_buffer("global_step", torch.LongTensor([0]))
+        self.register_buffer("global_step", torch.tensor([0], dtype=torch.long))
         self.freeze_encoder_updates = freeze_encoder_updates
 
     def output_size(self) -> int:
@@ -299,6 +299,7 @@ class FairseqHubertEncoder(AbsEncoder):
         https://github.com/pytorch/fairseq/blob/master/fairseq/models/hubert/hubert.py
     """
 
+    @typechecked
     def __init__(
         self,
         input_size: int,
@@ -322,7 +323,6 @@ class FairseqHubertEncoder(AbsEncoder):
         layerdrop: float = 0.1,
         feature_grad_mult: float = 0.0,
     ):
-        assert check_argument_types()
         super().__init__()
         self.apply_mask = apply_mask
         try:
@@ -429,7 +429,7 @@ class FairseqHubertEncoder(AbsEncoder):
             self.output_layer = None
 
         self.freeze_finetune_updates = freeze_finetune_updates
-        self.register_buffer("num_updates", torch.LongTensor([0]))
+        self.register_buffer("num_updates", torch.tensor([0], dtype=torch.long))
 
     def output_size(self) -> int:
         return self._output_size
@@ -508,6 +508,7 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
         normalize_before: whether to use layer_norm before the first block
     """
 
+    @typechecked
     def __init__(
         self,
         input_size: int = 1,
@@ -525,7 +526,6 @@ class FairseqHubertPretrainEncoder(AbsEncoder):
         use_amp: bool = False,
         **kwargs,
     ):
-        assert check_argument_types()
         super().__init__()
         self._output_size = output_size
         self.use_amp = use_amp

@@ -1,5 +1,3 @@
-import math
-
 import torch
 
 from espnet2.enh.decoder.abs_decoder import AbsDecoder
@@ -22,12 +20,13 @@ class ConvDecoder(AbsDecoder):
         self.kernel_size = kernel_size
         self.stride = stride
 
-    def forward(self, input: torch.Tensor, ilens: torch.Tensor):
+    def forward(self, input: torch.Tensor, ilens: torch.Tensor, fs: int = None):
         """Forward.
 
         Args:
-        input (torch.Tensor): spectrum [Batch, T, F]
-        ilens (torch.Tensor): input lengths [Batch]
+            input (torch.Tensor): spectrum [Batch, T, F]
+            ilens (torch.Tensor): input lengths [Batch]
+            fs (int): sampling rate in Hz (Not used)
         """
         input = input.transpose(1, 2)
         batch_size = input.shape[0]
@@ -37,10 +36,14 @@ class ConvDecoder(AbsDecoder):
         return wav, ilens
 
     def forward_streaming(self, input_frame: torch.Tensor):
-        return self.forward(input_frame, ilens=torch.LongTensor([self.kernel_size]))[0]
+        return self.forward(
+            input_frame, ilens=torch.tensor([self.kernel_size], dtype=torch.long)
+        )[0]
 
     def streaming_merge(self, chunks: torch.Tensor, ilens: torch.tensor = None):
-        """streaming_merge. It merges the frame-level processed audio chunks
+        """Stream Merge.
+
+        It merges the frame-level processed audio chunks
         in the streaming *simulation*. It is noted that, in real applications,
         the processed audio should be sent to the output channel frame by frame.
         You may refer to this function to manage your streaming output buffer.
@@ -76,7 +79,7 @@ if __name__ == "__main__":
     from espnet2.enh.encoder.conv_encoder import ConvEncoder
 
     input_audio = torch.randn((1, 100))
-    ilens = torch.LongTensor([100])
+    ilens = torch.tensor([100], dtype=torch.long)
 
     kernel_size = 32
     stride = 16

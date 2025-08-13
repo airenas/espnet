@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Iterable, List, Union
 
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.text.abs_tokenizer import AbsTokenizer
 
@@ -14,8 +14,8 @@ except ImportError:
 
 
 class HuggingFaceTokenizer(AbsTokenizer):
+    @typechecked
     def __init__(self, model: Union[Path, str]):
-        assert check_argument_types()
 
         if not is_transformers_available:
             raise ImportError(
@@ -46,6 +46,10 @@ class HuggingFaceTokenizer(AbsTokenizer):
 
     def tokens2text(self, tokens: Iterable[str]) -> str:
         self._build_tokenizer()
-        return self.tokenizer.batch_decode(
-            [self.tokenizer.convert_tokens_to_ids(tokens)], skip_special_tokens=True
-        )[0]
+        return (
+            self.tokenizer.batch_decode(
+                [self.tokenizer.convert_tokens_to_ids(tokens)], skip_special_tokens=True
+            )[0]
+            .replace("\n", " ")
+            .strip()
+        )

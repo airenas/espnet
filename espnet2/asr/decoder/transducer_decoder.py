@@ -3,7 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import torch
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
 from espnet2.asr.transducer.beam_search_transducer import ExtendedHypothesis, Hypothesis
@@ -23,6 +23,7 @@ class TransducerDecoder(AbsDecoder):
 
     """
 
+    @typechecked
     def __init__(
         self,
         vocab_size: int,
@@ -33,7 +34,6 @@ class TransducerDecoder(AbsDecoder):
         dropout_embed: float = 0.0,
         embed_pad: int = 0,
     ):
-        assert check_argument_types()
 
         if rnn_type not in {"lstm", "gru"}:
             raise ValueError(f"Not supported: rnn_type={rnn_type}")
@@ -225,7 +225,9 @@ class TransducerDecoder(AbsDecoder):
                 process.append((str_labels, hyp.yseq[-1], hyp.dec_state))
 
         if process:
-            labels = torch.LongTensor([[p[1]] for p in process], device=self.device)
+            labels = torch.tensor(
+                [[p[1]] for p in process], device=self.device, dtype=torch.long
+            )
             p_dec_states = self.create_batch_states(
                 self.init_state(labels.size(0)), [p[2] for p in process]
             )
@@ -247,8 +249,8 @@ class TransducerDecoder(AbsDecoder):
         dec_states = self.create_batch_states(dec_states, [d[1] for d in done])
 
         if use_lm:
-            lm_labels = torch.LongTensor(
-                [h.yseq[-1] for h in hyps], device=self.device
+            lm_labels = torch.tensor(
+                [h.yseq[-1] for h in hyps], device=self.device, dtype=torch.long
             ).view(final_batch, 1)
 
             return dec_out, dec_states, lm_labels
@@ -292,7 +294,9 @@ class TransducerDecoder(AbsDecoder):
         """
         return (
             torch.cat([s[0] for s in new_states], dim=1),
-            torch.cat([s[1] for s in new_states], dim=1)
-            if self.dtype == "lstm"
-            else None,
+            (
+                torch.cat([s[1] for s in new_states], dim=1)
+                if self.dtype == "lstm"
+                else None
+            ),
         )

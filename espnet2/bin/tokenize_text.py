@@ -7,7 +7,7 @@ import sys
 from typing import List
 from typing import Optional
 
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet.utils.cli_utils import get_commandline_args
 from espnet2.text.build_tokenizer import build_tokenizer
@@ -62,6 +62,7 @@ def field2slice(field: Optional[str]) -> slice:
     return slic
 
 
+@typechecked
 def tokenize(
     input: str,
     output: str,
@@ -80,7 +81,6 @@ def tokenize(
     cleaner: Optional[str],
     g2p: Optional[str],
 ):
-    assert check_argument_types()
 
     logging.basicConfig(
         level=log_level,
@@ -97,7 +97,7 @@ def tokenize(
         p.parent.mkdir(parents=True, exist_ok=True)
         fout = p.open("w", encoding="utf-8")
 
-    cleaner = TextCleaner(cleaner)
+    cleaner: TextCleaner = TextCleaner(cleaner)
     tokenizer = build_tokenizer(
         token_type=token_type,
         bpemodel=bpemodel,
@@ -110,7 +110,7 @@ def tokenize(
 
     counter = Counter()
     if field is not None:
-        field = field2slice(field)
+        field: slice = field2slice(field)
 
     for line in fin:
         line = line.rstrip()

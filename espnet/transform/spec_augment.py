@@ -1,4 +1,4 @@
-"""Spec Augment module for preprocessing i.e., data augmentation"""
+"""Spec Augment module for preprocessing i.e., data augmentation."""
 
 import random
 
@@ -8,7 +8,7 @@ from espnet.transform.functional import FuncTrans
 
 
 def time_warp(x, max_time_warp=80, inplace=False, mode="PIL"):
-    """time warp for spec augment
+    """Return time warp for spec augment.
 
     move random center frame by the random width ~ uniform(-window, window)
     :param numpy.ndarray x: spectrogram (time, freq)
@@ -32,7 +32,7 @@ def time_warp(x, max_time_warp=80, inplace=False, mode="PIL"):
 
         left = Image.fromarray(x[:center]).resize((x.shape[1], warped), BICUBIC)
         right = Image.fromarray(x[center:]).resize((x.shape[1], t - warped), BICUBIC)
-        if inplace:
+        if inplace and x.flags.writeable:
             x[:warped] = left
             x[warped:] = right
             return x
@@ -53,24 +53,27 @@ def time_warp(x, max_time_warp=80, inplace=False, mode="PIL"):
 
 
 class TimeWarp(FuncTrans):
+    """Time Warp Class."""
+
     _func = time_warp
     __doc__ = time_warp.__doc__
 
     def __call__(self, x, train):
+        """Process call method."""
         if not train:
             return x
         return super().__call__(x)
 
 
 def freq_mask(x, F=30, n_mask=2, replace_with_zero=True, inplace=False):
-    """freq mask for spec agument
+    """Return freq mask for spec agument.
 
     :param numpy.ndarray x: (time, freq)
     :param int n_mask: the number of masks
     :param bool inplace: overwrite
     :param bool replace_with_zero: pad zero on mask if true else use mean
     """
-    if inplace:
+    if inplace and x.flags.writeable:
         cloned = x
     else:
         cloned = x.copy()
@@ -94,24 +97,27 @@ def freq_mask(x, F=30, n_mask=2, replace_with_zero=True, inplace=False):
 
 
 class FreqMask(FuncTrans):
+    """Frequency Mask class."""
+
     _func = freq_mask
     __doc__ = freq_mask.__doc__
 
     def __call__(self, x, train):
+        """Process call method."""
         if not train:
             return x
         return super().__call__(x)
 
 
 def time_mask(spec, T=40, n_mask=2, replace_with_zero=True, inplace=False):
-    """freq mask for spec agument
+    """Return time mask for spec agument.
 
     :param numpy.ndarray spec: (time, freq)
     :param int n_mask: the number of masks
     :param bool inplace: overwrite
     :param bool replace_with_zero: pad zero on mask if true else use mean
     """
-    if inplace:
+    if inplace and spec.flags.writeable:
         cloned = spec
     else:
         cloned = spec.copy()
@@ -136,10 +142,13 @@ def time_mask(spec, T=40, n_mask=2, replace_with_zero=True, inplace=False):
 
 
 class TimeMask(FuncTrans):
+    """Time mask class."""
+
     _func = time_mask
     __doc__ = time_mask.__doc__
 
     def __call__(self, x, train):
+        """Process call method."""
         if not train:
             return x
         return super().__call__(x)
@@ -156,7 +165,7 @@ def spec_augment(
     inplace=True,
     replace_with_zero=True,
 ):
-    """spec agument
+    """Return spec agument masks.
 
     apply random time warping and time/freq masking
     default setting is based on LD (Librispeech double) in Table 2
@@ -194,10 +203,13 @@ def spec_augment(
 
 
 class SpecAugment(FuncTrans):
+    """SpecAugment class."""
+
     _func = spec_augment
     __doc__ = spec_augment.__doc__
 
     def __call__(self, x, train):
+        """Process call method."""
         if not train:
             return x
         return super().__call__(x)

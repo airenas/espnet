@@ -3,7 +3,7 @@ import logging
 from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
-from typeguard import check_argument_types, check_return_type
+from typeguard import typechecked
 
 from espnet2.asr.ctc import CTC
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
@@ -35,6 +35,7 @@ from espnet2.asr.encoder.rnn_encoder import RNNEncoder
 from espnet2.asr.encoder.transformer_encoder import TransformerEncoder
 from espnet2.asr.encoder.vgg_rnn_encoder import VGGRNNEncoder
 from espnet2.asr.encoder.wav2vec2_encoder import FairSeqWav2Vec2Encoder
+from espnet2.asr.encoder.whisper_encoder import OpenAIWhisperEncoder
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.frontend.default import DefaultFrontend
 from espnet2.asr.frontend.fused import FusedFrontends
@@ -131,6 +132,7 @@ encoder_choices = ClassChoices(
         hubert_pretrain=FairseqHubertPretrainEncoder,
         longformer=LongformerEncoder,
         branchformer=BranchformerEncoder,
+        whisper=OpenAIWhisperEncoder,
     ),
     type_check=AbsEncoder,
     default="rnn",
@@ -371,44 +373,36 @@ class SLUTask(ASRTask):
             class_choices.add_arguments(group)
 
     @classmethod
+    @typechecked
     def build_preprocess_fn(
         cls, args: argparse.Namespace, train: bool
     ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
-        assert check_argument_types()
         if args.use_preprocessor:
             retval = SLUPreprocessor(
                 train=train,
                 token_type=args.token_type,
                 token_list=args.token_list,
-                transcript_token_list=None
-                if "transcript_token_list" not in args
-                else args.transcript_token_list,
+                transcript_token_list=(
+                    None
+                    if "transcript_token_list" not in args
+                    else args.transcript_token_list
+                ),
                 bpemodel=args.bpemodel,
                 non_linguistic_symbols=args.non_linguistic_symbols,
                 text_cleaner=args.cleaner,
                 g2p_type=args.g2p,
                 # NOTE(kamo): Check attribute existence for backward compatibility
-                rir_scp=args.rir_scp if hasattr(args, "rir_scp") else None,
-                rir_apply_prob=args.rir_apply_prob
-                if hasattr(args, "rir_apply_prob")
-                else 1.0,
-                noise_scp=args.noise_scp if hasattr(args, "noise_scp") else None,
-                noise_apply_prob=args.noise_apply_prob
-                if hasattr(args, "noise_apply_prob")
-                else 1.0,
-                noise_db_range=args.noise_db_range
-                if hasattr(args, "noise_db_range")
-                else "13_15",
-                short_noise_thres=args.short_noise_thres
-                if hasattr(args, "short_noise_thres")
-                else 0.5,
-                speech_volume_normalize=args.speech_volume_normalize
-                if hasattr(args, "rir_scp")
-                else None,
+                rir_scp=getattr(args, "rir_scp", None),
+                rir_apply_prob=getattr(args, "rir_apply_prob", 1.0),
+                noise_scp=getattr(args, "noise_scp", None),
+                noise_apply_prob=getattr(args, "noise_apply_prob", 1.0),
+                noise_db_range=getattr(args, "noise_db_range", "13_15"),
+                short_noise_thres=getattr(args, "short_noise_thres", 0.5),
+                speech_volume_normalize=getattr(args, "rir_scp", None),
+                **getattr(args, "preprocessor_conf", {}),
             )
         else:
             retval = None
-        assert check_return_type(retval)
         return retval
 
     @classmethod
@@ -427,12 +421,11 @@ class SLUTask(ASRTask):
         cls, train: bool = True, inference: bool = False
     ) -> Tuple[str, ...]:
         retval = ("transcript",)
-        assert check_return_type(retval)
         return retval
 
     @classmethod
+    @typechecked
     def build_model(cls, args: argparse.Namespace) -> ESPnetSLUModel:
-        assert check_argument_types()
         if isinstance(args.token_list, str):
             with open(args.token_list, encoding="utf-8") as f:
                 token_list = [line.rstrip() for line in f]
@@ -529,28 +522,32 @@ class SLUTask(ASRTask):
             postdecoder = None
 
         # 5. Decoder
-        decoder_class = decoder_choices.get_class(args.decoder)
+        if getattr(args, "decoder", None) is not None:
+            decoder_class = decoder_choices.get_class(args.decoder)
 
-        if args.decoder == "transducer":
-            decoder = decoder_class(
-                vocab_size,
-                embed_pad=0,
-                **args.decoder_conf,
-            )
+            if args.decoder == "transducer":
+                decoder = decoder_class(
+                    vocab_size,
+                    embed_pad=0,
+                    **args.decoder_conf,
+                )
 
-            joint_network = JointNetwork(
-                vocab_size,
-                encoder.output_size(),
-                decoder.dunits,
-                **args.joint_net_conf,
-            )
+                joint_network = JointNetwork(
+                    vocab_size,
+                    encoder.output_size(),
+                    decoder.dunits,
+                    **args.joint_net_conf,
+                )
+            else:
+                decoder = decoder_class(
+                    vocab_size=vocab_size,
+                    encoder_output_size=encoder_output_size,
+                    **args.decoder_conf,
+                )
+
+                joint_network = None
         else:
-            decoder = decoder_class(
-                vocab_size=vocab_size,
-                encoder_output_size=encoder_output_size,
-                **args.decoder_conf,
-            )
-
+            decoder = None
             joint_network = None
 
         # 6. CTC
@@ -590,5 +587,4 @@ class SLUTask(ASRTask):
         if args.init is not None:
             initialize(model, args.init)
 
-        assert check_return_type(model)
         return model

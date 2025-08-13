@@ -1,4 +1,5 @@
 """Trainer module."""
+
 import argparse
 import dataclasses
 import logging
@@ -14,7 +15,7 @@ import torch
 import torch.nn
 import torch.optim
 from packaging.version import parse as V
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.iterators.abs_iter_factory import AbsIterFactory
 from espnet2.main_funcs.average_nbest_models import average_nbest_models
@@ -61,6 +62,16 @@ try:
 except ImportError:
     fairscale = None
 
+try:
+    import loralib as lora
+except Exception:
+    lora = None
+
+try:
+    import s3prl
+except Exception:
+    s3prl = None
+
 
 @dataclasses.dataclass
 class TrainerOptions:
@@ -77,6 +88,9 @@ class TrainerOptions:
     use_matplotlib: bool
     use_tensorboard: bool
     use_wandb: bool
+    adapter: str
+    use_adapter: bool
+    save_strategy: str
     output_dir: Union[Path, str]
     max_epoch: int
     seed: int
@@ -90,6 +104,8 @@ class TrainerOptions:
     unused_parameters: bool
     wandb_model_log_interval: int
     create_graph_in_tensorboard: bool
+    gradient_as_bucket_view: bool
+    ddp_comm_hook: Optional[str]
 
 
 class Trainer:
@@ -119,9 +135,9 @@ class Trainer:
         raise RuntimeError("This class can't be instantiated.")
 
     @classmethod
+    @typechecked
     def build_options(cls, args: argparse.Namespace) -> TrainerOptions:
         """Build options consumed by train(), eval(), and plot_attention()"""
-        assert check_argument_types()
         return build_dataclass(TrainerOptions, args)
 
     @classmethod
@@ -138,12 +154,14 @@ class Trainer:
         schedulers: Sequence[Optional[AbsScheduler]],
         scaler: Optional[GradScaler],
         ngpu: int = 0,
+        strict: bool = True,
     ):
         states = torch.load(
             checkpoint,
             map_location=f"cuda:{torch.cuda.current_device()}" if ngpu > 0 else "cpu",
+            weights_only=False,
         )
-        model.load_state_dict(states["model"])
+        model.load_state_dict(states["model"], strict=strict)
         reporter.load_state_dict(states["reporter"])
         for optimizer, state in zip(optimizers, states["optimizers"]):
             optimizer.load_state_dict(state)
@@ -159,6 +177,7 @@ class Trainer:
         logging.info(f"The training was resumed using {checkpoint}")
 
     @classmethod
+    @typechecked
     def run(
         cls,
         model: AbsESPnetModel,
@@ -171,7 +190,6 @@ class Trainer:
         distributed_option: DistributedOption,
     ) -> None:
         """Perform training. This method performs the main process of training."""
-        assert check_argument_types()
         # NOTE(kamo): Don't check the type more strictly as far trainer_options
         assert is_dataclass(trainer_options), type(trainer_options)
         assert len(optimizers) == len(schedulers), (len(optimizers), len(schedulers))
@@ -202,6 +220,17 @@ class Trainer:
         else:
             scaler = None
 
+        adapter = getattr(trainer_options, "adapter", None)
+        use_adapter = getattr(trainer_options, "use_adapter", False)
+        save_strategy = getattr(trainer_options, "save_strategy", "all")
+        if use_adapter:
+            if adapter == "lora" and lora is None:
+                raise RuntimeError("Requiring loralib. Do 'pip install loralib'")
+            elif adapter == "houlsby" and s3prl is None:
+                print("Error: S3PRL is not properly installed.")
+                print("Please install S3PRL: cd ${MAIN_ROOT}/tools && make s3prl.done")
+                raise RuntimeError("Requiring S3PRL. ")
+
         if trainer_options.resume and (output_dir / "checkpoint.pth").exists():
             cls.resume(
                 checkpoint=output_dir / "checkpoint.pth",
@@ -211,6 +240,7 @@ class Trainer:
                 reporter=reporter,
                 scaler=scaler,
                 ngpu=trainer_options.ngpu,
+                strict=not use_adapter,
             )
 
         start_epoch = reporter.get_epoch() + 1
@@ -241,7 +271,29 @@ class Trainer:
                         else None
                     ),
                     find_unused_parameters=trainer_options.unused_parameters,
+                    gradient_as_bucket_view=trainer_options.gradient_as_bucket_view,
                 )
+
+                # Register DDP communication hook
+                if trainer_options.ddp_comm_hook is not None:
+                    from torch.distributed.algorithms.ddp_comm_hooks.default_hooks import (  # noqa: E501
+                        bf16_compress_hook,
+                        fp16_compress_hook,
+                    )
+
+                    _hooks = {
+                        "fp16_compress_hook": fp16_compress_hook,
+                        "bf16_compress_hook": bf16_compress_hook,
+                    }
+                    dp_model.register_comm_hook(
+                        None,
+                        _hooks[trainer_options.ddp_comm_hook],
+                    )
+                    logging.info(
+                        f"Registered DDP communication hook: "
+                        f"{trainer_options.ddp_comm_hook}"
+                    )
+
         elif distributed_option.ngpu > 1:
             dp_model = torch.nn.parallel.DataParallel(
                 model,
@@ -286,6 +338,7 @@ class Trainer:
 
             reporter.set_epoch(iepoch)
             # 1. Train and validation for one-epoch
+            torch.cuda.empty_cache()
             with reporter.observe("train") as sub_reporter:
                 all_steps_are_invalid = cls.train_one_epoch(
                     model=dp_model,
@@ -299,6 +352,7 @@ class Trainer:
                     distributed_option=distributed_option,
                 )
 
+            torch.cuda.empty_cache()
             with reporter.observe("valid") as sub_reporter:
                 cls.validate_one_epoch(
                     model=dp_model,
@@ -307,6 +361,8 @@ class Trainer:
                     options=trainer_options,
                     distributed_option=distributed_option,
                 )
+
+            torch.cuda.empty_cache()
             if not distributed_option.distributed or distributed_option.dist_rank == 0:
                 # att_plot doesn't support distributed
                 if plot_attention_iter_factory is not None:
@@ -345,9 +401,29 @@ class Trainer:
                     reporter.wandb_log()
 
                 # 4. Save/Update the checkpoint
+                model_state_dict = model.state_dict()
+                if use_adapter:
+                    if save_strategy == "all":
+                        model_state_dict = model_state_dict
+                    elif save_strategy == "adapter_only":
+                        if adapter == "lora":
+                            model_state_dict = lora.lora_state_dict(model)
+                        elif adapter == "houlsby":
+                            model_state_dict = {
+                                k: v
+                                for k, v in model_state_dict.items()
+                                if "adapter" in k
+                            }
+                        else:
+                            raise ValueError(f"Adapter type {adapter} not supported")
+                    else:  # save_strategy == "required_grad_only"
+                        for n, p in model.named_parameters():
+                            if not p.requires_grad:
+                                model_state_dict.pop(n)
+
                 torch.save(
                     {
-                        "model": model.state_dict(),
+                        "model": model_state_dict,
                         "reporter": reporter.state_dict(),
                         "optimizers": [o.state_dict() for o in optimizers],
                         "schedulers": [
@@ -360,7 +436,7 @@ class Trainer:
                 )
 
                 # 5. Save and log the model and update the link to the best model
-                torch.save(model.state_dict(), output_dir / f"{iepoch}epoch.pth")
+                torch.save(model_state_dict, output_dir / f"{iepoch}epoch.pth")
 
                 # Creates a sym link latest.pth -> {iepoch}epoch.pth
                 p = output_dir / "latest.pth"
@@ -469,6 +545,7 @@ class Trainer:
             )
 
     @classmethod
+    @typechecked
     def train_one_epoch(
         cls,
         model: torch.nn.Module,
@@ -481,7 +558,6 @@ class Trainer:
         options: TrainerOptions,
         distributed_option: DistributedOption,
     ) -> bool:
-        assert check_argument_types()
 
         grad_noise = options.grad_noise
         accum_grad = options.accum_grad
@@ -601,6 +677,8 @@ class Trainer:
                         loss, stats, weight = retval
                         optim_idx = None
 
+                    retval = None
+
                 stats = {k: v for k, v in stats.items() if v is not None}
                 if ngpu > 1 or distributed:
                     # Apply weighted averaging for loss and stats
@@ -630,6 +708,7 @@ class Trainer:
                     scaler.scale(loss).backward()
                 else:
                     loss.backward()
+            del loss
 
             if iiter % accum_grad == 0:
                 if scaler is not None:
@@ -743,6 +822,7 @@ class Trainer:
 
     @classmethod
     @torch.no_grad()
+    @typechecked
     def validate_one_epoch(
         cls,
         model: torch.nn.Module,
@@ -751,7 +831,6 @@ class Trainer:
         options: TrainerOptions,
         distributed_option: DistributedOption,
     ) -> None:
-        assert check_argument_types()
         ngpu = options.ngpu
         no_forward_run = options.no_forward_run
         distributed = distributed_option.distributed
@@ -774,7 +853,12 @@ class Trainer:
             if no_forward_run:
                 continue
 
-            retval = model(**batch)
+            with autocast(
+                options.use_amp,
+                **autocast_args,
+            ):
+                retval = model(**batch)
+
             if isinstance(retval, dict):
                 stats = retval["stats"]
                 weight = retval["weight"]
@@ -795,6 +879,7 @@ class Trainer:
 
     @classmethod
     @torch.no_grad()
+    @typechecked
     def plot_attention(
         cls,
         model: torch.nn.Module,
@@ -804,7 +889,6 @@ class Trainer:
         reporter: SubReporter,
         options: TrainerOptions,
     ) -> None:
-        assert check_argument_types()
         import matplotlib
 
         ngpu = options.ngpu

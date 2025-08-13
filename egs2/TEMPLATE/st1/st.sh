@@ -23,21 +23,21 @@ min() {
 SECONDS=0
 
 # General configuration
-stage=1              # Processes starts from the specified stage.
-stop_stage=10000     # Processes is stopped at the specified stage.
-skip_data_prep=false # Skip data preparation stages.
-skip_train=false     # Skip training stages.
-skip_eval=false      # Skip decoding and evaluation stages.
-skip_upload=true     # Skip packing and uploading stages.
-skip_upload_hf=true  # Skip uploading to hugging face stages.
-ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
-num_nodes=1          # The number of nodes.
-nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
-gpu_inference=false  # Whether to perform gpu decoding.
-dumpdir=dump         # Directory to dump features.
-expdir=exp           # Directory to save experiments.
-python=python3       # Specify python to execute espnet commands.
+stage=1                 # Processes starts from the specified stage.
+stop_stage=10000        # Processes is stopped at the specified stage.
+skip_data_prep=false    # Skip data preparation stages.
+skip_train=false        # Skip training stages.
+skip_eval=false         # Skip decoding and evaluation stages.
+skip_packing=true       # Skip packing stage.
+skip_upload_hf=true     # Skip uploading to huggingface stage.
+ngpu=1                  # The number of gpus ("0" uses cpu, otherwise use gpu).
+num_nodes=1             # The number of nodes.
+nj=32                   # The number of parallel jobs.
+inference_nj=32         # The number of parallel jobs in decoding.
+gpu_inference=false     # Whether to perform gpu decoding.
+dumpdir=dump            # Directory to dump features.
+expdir=exp              # Directory to save experiments.
+python=python3          # Specify python to execute espnet commands.
 
 # Data preparation related
 local_data_opts= # The options given to local/data.sh.
@@ -71,22 +71,27 @@ tgt_bpemode=unigram     # Mode of BPE (unigram or bpe) for target language.
 tgt_bpe_input_sentence_size=100000000 # Size of input sentence for BPE for target language.
 tgt_bpe_nlsyms=         # non-linguistic symbols list, separated by a comma, for BPE for target language.
 tgt_bpe_char_cover=1.0  # character coverage when modeling BPE for target language.
+hugging_face_model_name_or_path="" # Hugging Face model or path for hugging_face tokenizer
 
 # Ngram model related
 use_ngram=false
 ngram_exp=
 ngram_num=3
+use_src_ngram=false
 
 # Language model related
-use_lm=true       # Use language model for ST decoding.
+use_lm=false      # Use language model for ST decoding.
+use_src_lm=false  # Use language model for ASR multi-decoder decoding.
 lm_tag=           # Suffix to the result dir for language model training.
 lm_exp=           # Specify the directory path for LM experiment.
                   # If this option is specified, lm_tag is ignored.
+src_lm_exp=       # Specify the directory path for LM experiment.
 lm_stats_dir=     # Specify the directory path for LM statistics.
 lm_config=        # Config for language model training.
 lm_args=          # Arguments for language model training, e.g., "--max_epoch 10".
                   # Note that it will overwrite args in lm config.
 use_word_lm=false # Whether to use word language model.
+use_src_word_lm=false # Whether to use word language model.
 num_splits_lm=1   # Number of splitting for lm corpus.
 # shellcheck disable=SC2034
 word_vocab_size=10000 # Size of word vocabulary.
@@ -119,6 +124,7 @@ inference_config= # Config for decoding.
 inference_args=   # Arguments for decoding, e.g., "--lm_weight 0.1".
                   # Note that it will overwrite args in inference config.
 inference_lm=valid.loss.ave.pth       # Language model path for decoding.
+inference_asr_lm=valid.loss.ave.pth       # Language model path for decoding.
 inference_ngram=${ngram_num}gram.bin
 inference_st_model=valid.acc.ave.pth # ST model path for decoding.
                                       # e.g.
@@ -139,6 +145,7 @@ lm_dev_text=     # Text file path of language model development set.
 lm_test_text=    # Text file path of language model evaluation set.
 nlsyms_txt=none  # Non-linguistic symbol list if existing.
 cleaner=none     # Text cleaner.
+hyp_cleaner=none # Text cleaner for hypotheses (may be used with external tokenizers)
 g2p=none         # g2p method (needed if token_type=phn).
 score_opts=                # The options given to sclite scoring
 local_score_opts=          # The options given to local/score.sh.
@@ -156,7 +163,7 @@ Options:
     --skip_data_prep # Skip data preparation stages (default="${skip_data_prep}").
     --skip_train     # Skip training stages (default="${skip_train}").
     --skip_eval      # Skip decoding and evaluation stages (default="${skip_eval}").
-    --skip_upload    # Skip packing and uploading stages (default="${skip_upload}").
+    --skip_packing   # Skip packing stage (default="${skip_packing}).
     --ngpu           # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
     --num_nodes      # The number of nodes (default="${num_nodes}").
     --nj             # The number of parallel jobs (default="${nj}").
@@ -319,6 +326,7 @@ tgt_bpeprefix="${tgt_bpedir}"/bpe
 tgt_bpemodel="${tgt_bpeprefix}".model
 tgt_bpetoken_list="${tgt_bpedir}"/tokens.txt
 tgt_chartoken_list="${token_listdir}"/char/tgt_tokens.txt
+hugging_face_token_list="${token_listdir}/hugging_face_"${hugging_face_model_name_or_path/\//-}/tokens.txt
 if "${token_joint}"; then
     # if token_joint, the bpe training will use both src_lang and tgt_lang to train a single bpe model
     src_bpedir="${tgt_bpedir}"
@@ -355,6 +363,14 @@ elif [ "${src_token_type}" = char ]; then
 elif [ "${src_token_type}" = word ]; then
     src_token_list="${src_wordtoken_list}"
     src_bpemodel=none
+elif [ "${src_token_type}" = whisper_en ]; then
+    src_token_list="${token_listdir}"/src_whisper_en/tokens.txt
+    src_bpemodel=whisper_en
+    hyp_cleaner=${cleaner}
+elif [ "${src_token_type}" = whisper_multilingual ]; then
+    src_token_list="${token_listdir}"/src_whisper_multilingual/tokens.txt
+    src_bpemodel=whisper_multilingual
+    hyp_cleaner=${cleaner}
 else
     log "Error: not supported --src_token_type '${src_token_type}'"
     exit 2
@@ -367,10 +383,22 @@ elif [ "${tgt_token_type}" = char ]; then
 elif [ "${tgt_token_type}" = word ]; then
     tgt_token_list="${tgt_wordtoken_list}"
     tgt_bpemodel=none
+elif [ "${tgt_token_type}" = whisper_en ]; then
+    tgt_token_list="${token_listdir}"/tgt_whisper_en/tokens.txt
+    tgt_bpemodel=whisper_en
+    hyp_cleaner=${cleaner}
+elif [ "${tgt_token_type}" = whisper_multilingual ]; then
+    tgt_token_list="${token_listdir}"/tgt_whisper_multilingual/tokens.txt
+    tgt_bpemodel=whisper_multilingual
+    hyp_cleaner=${cleaner}
+elif [ "${tgt_token_type}" = hugging_face ]; then
+    tgt_token_list="${hugging_face_token_list}"
+    tgt_bpemodel=${hugging_face_model_name_or_path}
 else
     log "Error: not supported --tgt_token_type '${tgt_token_type}'"
     exit 2
 fi
+
 if ${use_word_lm}; then
     log "Error: Word LM is not supported yet"
     exit 2
@@ -393,6 +421,9 @@ if [ -z "${st_tag}" ]; then
     st_tag+="_${src_lang}_${tgt_lang}_${tgt_token_type}_${tgt_case}"
     if [ "${tgt_token_type}" = bpe ]; then
         st_tag+="${tgt_nbpe}"
+    fi
+    if [ "${tgt_token_type}" = hugging_face ]; then
+        st_tag+="_"${hugging_face_model_name_or_path/\//-}
     fi
     # Add overwritten arg's info
     if [ -n "${st_args}" ]; then
@@ -423,6 +454,9 @@ if [ -z "${st_stats_dir}" ]; then
     st_stats_dir="${expdir}/st_stats_${feats_type}_${src_lang}_${tgt_lang}_${tgt_token_type}"
     if [ "${tgt_token_type}" = bpe ]; then
         st_stats_dir+="${tgt_nbpe}"
+    fi
+    if [ "${tgt_token_type}" = hugging_face ]; then
+        st_stats_dir+="_"${hugging_face_model_name_or_path/\//-}
     fi
     if [ -n "${speed_perturb_factors}" ]; then
         st_stats_dir+="_sp"
@@ -793,6 +827,25 @@ if ! "${skip_data_prep}"; then
                 --add_symbol "${oov}:1" \
                 --add_symbol "${sos_eos}:-1"
 
+        elif grep -q "whisper" <<< ${tgt_token_type}; then
+            log "Stage 5a: Generate whisper token_list from ${tgt_token_type} tokenizer"
+
+            echo ${tgt_token_list}
+            ${python} -m espnet2.bin.whisper_export_vocabulary  \
+                --whisper_model "${tgt_token_type}" \
+                --whisper_language "${tgt_lang}" \
+                --whisper_task "translate" \
+                --output "${tgt_token_list}"
+
+        elif [ "${tgt_token_type}" = hugging_face ]; then
+            log "Stage 5: Generate hugging_face token_list from ${hugging_face_model_name_or_path}"
+
+            # The first symbol in token_list must be "<blank>" and the last must be also sos/eos:
+            # 0 is reserved for CTC-blank for ASR and also used as ignore-index in the other task
+            ${python} -m espnet2.bin.hugging_face_export_vocabulary  \
+                --model_name_or_path "${hugging_face_model_name_or_path}" \
+                --output "${tgt_token_list}"
+
         else
             log "Error: not supported --token_type '${tgt_token_type}'"
             exit 2
@@ -868,6 +921,16 @@ if ! "${skip_data_prep}"; then
                     --add_symbol "${blank}:0" \
                     --add_symbol "${oov}:1" \
                     --add_symbol "${sos_eos}:-1"
+
+            elif grep -q "whisper" <<< ${src_token_type}; then
+                log "Stage 5b: Generate whisper token_list from ${src_token_type} tokenizer"
+
+                echo ${src_token_list}
+                ${python} -m espnet2.bin.whisper_export_vocabulary  \
+                    --whisper_model "${src_token_type}" \
+                    --whisper_language "${src_lang}" \
+                    --whisper_task "translate" \
+                    --output "${src_token_list}"
 
             else
                 log "Error: not supported --token_type '${src_token_type}'"
@@ -1330,8 +1393,6 @@ if ! "${skip_train}"; then
                 --valid_shape_file "${st_stats_dir}/valid/speech_shape" \
                 --valid_shape_file "${st_stats_dir}/valid/text_shape.${tgt_token_type}" \
                 --resume true \
-                --init_param ${pretrained_asr} \
-                --ignore_init_mismatch ${ignore_init_mismatch} \
                 --fold_length "${_fold_length}" \
                 --fold_length "${st_text_fold_length}" \
                 --output_dir "${st_exp}" \
@@ -1404,6 +1465,19 @@ if ! "${skip_eval}"; then
              _opts+="--ngram_file ${ngram_exp}/${inference_ngram}"
         fi
 
+        if "${use_src_lm}"; then
+            if "${use_src_word_lm}"; then
+                _opts+="--src_word_lm_train_config ${src_lm_exp}/config.yaml "
+                _opts+="--src_word_lm_file ${src_lm_exp}/${src_inference_lm} "
+            else
+                _opts+="--src_lm_train_config ${src_lm_exp}/config.yaml "
+                _opts+="--src_lm_file ${src_lm_exp}/${src_inference_lm} "
+            fi
+        fi
+        if "${use_src_ngram}"; then
+             _opts+="--src_ngram_file ${src_ngram_exp}/${src_inference_ngram}"
+        fi
+
         # 2. Generate run.sh
         log "Generate '${st_exp}/${inference_tag}/run.sh'. You can resume the process from stage 12 using this script"
         mkdir -p "${st_exp}/${inference_tag}"; echo "${run_args} --stage 12 \"\$@\"; exit \$?" > "${st_exp}/${inference_tag}/run.sh"; chmod +x "${st_exp}/${inference_tag}/run.sh"
@@ -1463,6 +1537,14 @@ if ! "${skip_eval}"; then
                     cat "${_logdir}/output.${i}/1best_recog/${f}"
                 done | LC_ALL=C sort -k1 >"${_dir}/${f}"
             done
+
+            if [ -d "${_logdir}/output.1/1asr_best_recog" ]; then
+                for f in asr_token asr_token_int asr_score asr_text; do
+                    for i in $(seq "${_nj}"); do
+                        cat "${_logdir}/output.${i}/1asr_best_recog/${f}"
+                    done | LC_ALL=C sort -k1 >"${_dir}/${f}"
+                done
+            fi
         done
     fi
 
@@ -1498,6 +1580,7 @@ if ! "${skip_eval}"; then
                             --token_type word \
                             --non_linguistic_symbols "${nlsyms_txt}" \
                             --remove_non_linguistic_symbols true \
+                            --cleaner "${hyp_cleaner}" \
                             ) \
                 <(<"${_data}/utt2spk" awk '{ print "(" $2 "-" $1 ")" }') \
                     >"${_scoredir}/hyp.trn.org"
@@ -1577,6 +1660,47 @@ if ! "${skip_eval}"; then
                     >> ${_scoredir}/result.lc.txt
                 log "Write a case-insensitve BLEU (multi-reference) result in ${_scoredir}/result.lc.txt"
             fi
+
+            # WER scoring for multi-decoder
+            if [ -f "${_dir}/asr_text" ]; then
+                _scoredir="${_dir}/score_wer"
+                mkdir -p "${_scoredir}"
+
+                # Tokenize text to word level
+                paste \
+                    <(<"${_data}/text" \
+                            ${python} -m espnet2.bin.tokenize_text  \
+                                -f 2- --input - --output - \
+                                --token_type word \
+                                --non_linguistic_symbols "${nlsyms_txt}" \
+                                --remove_non_linguistic_symbols true \
+                                --cleaner "${cleaner}" \
+                                ) \
+                    <(<"${_data}/utt2spk" awk '{ print "(" $2 "-" $1 ")" }') \
+                        >"${_scoredir}/ref.trn"
+
+                # NOTE(kamo): Don't use cleaner for hyp
+                paste \
+                    <(<"${_dir}/asr_text"  \
+                            ${python} -m espnet2.bin.tokenize_text  \
+                                -f 2- --input - --output - \
+                                --token_type word \
+                                --non_linguistic_symbols "${nlsyms_txt}" \
+                                --remove_non_linguistic_symbols true \
+                                --cleaner "${hyp_cleaner}" \
+                                ) \
+                    <(<"${_data}/utt2spk" awk '{ print "(" $2 "-" $1 ")" }') \
+                        >"${_scoredir}/hyp.trn"
+
+                sclite \
+                    ${score_opts} \
+                    -r "${_scoredir}/ref.trn" trn \
+                    -h "${_scoredir}/hyp.trn" trn \
+                    -i rm -o all stdout > "${_scoredir}/result.txt"
+
+                log "Write WER result in ${_scoredir}/result.txt"
+                grep -e Avg -e SPKR -m 2 "${_scoredir}/result.txt"
+            fi
         done
 
         # Show results in Markdown syntax
@@ -1589,7 +1713,7 @@ fi
 
 
 packed_model="${st_exp}/${st_exp##*/}_${inference_st_model%.*}.zip"
-if ! "${skip_upload}"; then
+if ! "${skip_packing}"; then
     if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ]; then
         log "Stage 14: Pack model: ${packed_model}"
 
@@ -1605,6 +1729,8 @@ if ! "${skip_upload}"; then
         fi
         if [ "${tgt_token_type}" = bpe ]; then
             _opts+="--option ${tgt_bpemodel} "
+        fi
+        if [ "${src_token_type}" = bpe ]; then
             _opts+="--option ${src_bpemodel} "
         fi
         if [ "${nlsyms_txt}" != none ]; then
@@ -1620,69 +1746,17 @@ if ! "${skip_upload}"; then
             --option "${st_exp}"/images \
             --outpath "${packed_model}"
     fi
-
-
-    if [ ${stage} -le 15 ] && [ ${stop_stage} -ge 15 ]; then
-        log "Stage 15: Upload model to Zenodo: ${packed_model}"
-
-        # To upload your model, you need to do:
-        #   1. Sign up to Zenodo: https://zenodo.org/
-        #   2. Create access token: https://zenodo.org/account/settings/applications/tokens/new/
-        #   3. Set your environment: % export ACCESS_TOKEN="<your token>"
-
-        if command -v git &> /dev/null; then
-            _creator_name="$(git config user.name)"
-            _checkout="
-git checkout $(git show -s --format=%H)"
-
-        else
-            _creator_name="$(whoami)"
-            _checkout=""
-        fi
-        # /some/where/espnet/egs2/foo/st1/ -> foo/st1
-        _task="$(pwd | rev | cut -d/ -f2 | rev)"
-        # foo/st1 -> foo
-        _corpus="${_task%/*}"
-        _model_name="${_creator_name}/${_corpus}_$(basename ${packed_model} .zip)"
-
-        # Generate description file
-        cat << EOF > "${st_exp}"/description
-This model was trained by ${_creator_name} using ${_task} recipe in <a href="https://github.com/espnet/espnet/">espnet</a>.
-<p>&nbsp;</p>
-<ul>
-<li><strong>Python API</strong><pre><code class="language-python">See https://github.com/espnet/espnet_model_zoo</code></pre></li>
-<li><strong>Evaluate in the recipe</strong><pre>
-<code class="language-bash">git clone https://github.com/espnet/espnet
-cd espnet${_checkout}
-pip install -e .
-cd $(pwd | rev | cut -d/ -f1-3 | rev)
-./run.sh --skip_data_prep false --skip_train true --download_model ${_model_name}</code>
-</pre></li>
-<li><strong>Results</strong><pre><code>$(cat "${st_exp}"/RESULTS.md)</code></pre></li>
-<li><strong>ST config</strong><pre><code>$(cat "${st_exp}"/config.yaml)</code></pre></li>
-<li><strong>LM config</strong><pre><code>$(if ${use_lm}; then cat "${lm_exp}"/config.yaml; else echo NONE; fi)</code></pre></li>
-</ul>
-EOF
-
-        # NOTE(kamo): The model file is uploaded here, but not published yet.
-        #   Please confirm your record at Zenodo and publish it by yourself.
-
-        # shellcheck disable=SC2086
-        espnet_model_zoo_upload \
-            --file "${packed_model}" \
-            --title "ESPnet2 pretrained model, ${_model_name}, fs=${fs}, lang=${src_lang}_${tgt_lang}" \
-            --description_file "${st_exp}"/description \
-            --creator_name "${_creator_name}" \
-            --license "CC-BY-4.0" \
-            --use_sandbox false \
-            --publish false
-    fi
 else
-    log "Skip the uploading stages"
+    log "Skip the packing stage"
 fi
 
 if ! "${skip_upload_hf}"; then
-    if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ]; then
+    if [ ${stage} -le 15 ] && [ ${stop_stage} -ge 15 ]; then
+        if [ ! -f "${packed_model}" ]; then
+            log "Error: ${packed_model} does not exist. Please execute stage 14 first."
+            exit 1
+        fi
+
         [ -z "${hf_repo}" ] && \
             log "ERROR: You need to setup the variable hf_repo with the name of the repository located at HuggingFace" && \
             exit 1
@@ -1694,7 +1768,16 @@ if ! "${skip_upload_hf}"; then
             exit 1
 
         dir_repo=${expdir}/hf_${hf_repo//"/"/"_"}
-        [ ! -d "${dir_repo}" ] && git clone https://huggingface.co/${hf_repo} ${dir_repo}
+        if [ -d "${dir_repo}" ]; then
+            log "Error: Directory '${dir_repo}' already exists."
+            exit 1
+        fi
+        hf_repo_url="https://huggingface.co/${hf_repo}"
+        if ! git ls-remote ${hf_repo_url} &> /dev/null; then
+            log "Error: Repository '${hf_repo_url}' cannot be accessed. Please make sure you have access to it, or create one with e.g. huggingface-cli repo create ${hf_repo}."
+            exit 1
+        fi
+        git clone ${hf_repo_url} ${dir_repo}
 
         if command -v git &> /dev/null; then
             _creator_name="$(git config user.name)"
@@ -1718,7 +1801,7 @@ if ! "${skip_upload_hf}"; then
         espnet_task=ST
         # shellcheck disable=SC2034
         task_exp=${st_exp}
-        eval "echo \"$(cat scripts/utils/TEMPLATE_HF_Readme.md)\"" > "${dir_repo}"/README.md
+        eval "echo \"$(cat local/TEMPLATE_HF_README_st.md)\"" > "${dir_repo}"/README.md
 
         this_folder=${PWD}
         cd ${dir_repo}

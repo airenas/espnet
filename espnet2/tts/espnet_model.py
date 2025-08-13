@@ -8,7 +8,7 @@ from typing import Dict, Optional, Tuple
 
 import torch
 from packaging.version import parse as V
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.layers.inversible_interface import InversibleInterface
@@ -28,6 +28,7 @@ else:
 class ESPnetTTSModel(AbsESPnetModel):
     """ESPnet model for text-to-speech task."""
 
+    @typechecked
     def __init__(
         self,
         feats_extract: Optional[AbsFeatsExtract],
@@ -39,7 +40,6 @@ class ESPnetTTSModel(AbsESPnetModel):
         tts: AbsTTS,
     ):
         """Initialize ESPnetTTSModel module."""
-        assert check_argument_types()
         super().__init__()
         self.feats_extract = feats_extract
         self.pitch_extract = pitch_extract
@@ -260,8 +260,6 @@ class ESPnetTTSModel(AbsESPnetModel):
             if self.normalize is not None:
                 feats = self.normalize(feats[None])[0][0]
             input_dict.update(feats=feats)
-            if self.tts.require_raw_speech:
-                input_dict.update(speech=speech)
 
         if decode_config["use_teacher_forcing"]:
             if durations is not None:
@@ -270,7 +268,7 @@ class ESPnetTTSModel(AbsESPnetModel):
             if self.pitch_extract is not None:
                 pitch = self.pitch_extract(
                     speech[None],
-                    feats_lengths=torch.LongTensor([len(feats)]),
+                    feats_lengths=torch.tensor([len(feats)], dtype=torch.long),
                     durations=durations[None],
                 )[0][0]
             if self.pitch_normalize is not None:
@@ -281,7 +279,7 @@ class ESPnetTTSModel(AbsESPnetModel):
             if self.energy_extract is not None:
                 energy = self.energy_extract(
                     speech[None],
-                    feats_lengths=torch.LongTensor([len(feats)]),
+                    feats_lengths=torch.tensor([len(feats)], dtype=torch.long),
                     durations=durations[None],
                 )[0][0]
             if self.energy_normalize is not None:

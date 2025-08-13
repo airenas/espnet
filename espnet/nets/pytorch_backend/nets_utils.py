@@ -3,7 +3,7 @@
 """Network related utility tools."""
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 import numpy as np
 import torch
@@ -150,6 +150,27 @@ def make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
     if length_dim == 0:
         raise ValueError("length_dim cannot be 0: {}".format(length_dim))
 
+    # If the input dimension is 2 or 3,
+    # then we use ESPnet-ONNX based implementation for tracable modeling.
+    # otherwise we use the traditional implementation for research use.
+    if isinstance(lengths, list):
+        logging.warning(
+            "Using make_pad_mask with a list of lengths is not tracable. "
+            + "If you try to trace this function with type(lengths) == list, "
+            + "please change the type of lengths to torch.LongTensor."
+        )
+
+    if (
+        (xs is None or xs.dim() in (2, 3))
+        and length_dim <= 2
+        and (not isinstance(lengths, list) and lengths.dim() == 1)
+    ):
+        return _make_pad_mask_traceable(lengths, xs, length_dim, maxlen)
+    else:
+        return _make_pad_mask(lengths, xs, length_dim, maxlen)
+
+
+def _make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
     if not isinstance(lengths, list):
         lengths = lengths.long().tolist()
 
@@ -160,8 +181,10 @@ def make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
         else:
             maxlen = xs.size(length_dim)
     else:
-        assert xs is None
-        assert maxlen >= int(max(lengths))
+        assert xs is None, "When maxlen is specified, xs must not be specified."
+        assert maxlen >= int(
+            max(lengths)
+        ), f"maxlen {maxlen} must be >= max(lengths) {max(lengths)}"
 
     seq_range = torch.arange(0, maxlen, dtype=torch.int64)
     seq_range_expand = seq_range.unsqueeze(0).expand(bs, maxlen)
@@ -169,7 +192,9 @@ def make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
     mask = seq_range_expand >= seq_length_expand
 
     if xs is not None:
-        assert xs.size(0) == bs, (xs.size(0), bs)
+        assert (
+            xs.size(0) == bs
+        ), f"The size of x.size(0) {xs.size(0)} must match the batch size {bs}"
 
         if length_dim < 0:
             length_dim = xs.dim() + length_dim
@@ -179,6 +204,61 @@ def make_pad_mask(lengths, xs=None, length_dim=-1, maxlen=None):
         )
         mask = mask[ind].expand_as(xs).to(xs.device)
     return mask
+
+
+def _make_pad_mask_traceable(lengths, xs, length_dim, maxlen=None):
+    """Make mask tensor containing indices of padded part.
+
+    This is a simplified implementation of make_pad_mask without the xs input
+    that supports JIT tracing for applications like exporting models to ONNX.
+    Dimension length of xs should be 2 or 3
+    This function will create torch.ones(maxlen, maxlen).triu(diagonal=1) and
+    select rows to create mask tensor.
+    """
+    if xs is None:
+        device = lengths.device
+    else:
+        device = xs.device
+
+    if xs is not None and len(xs.shape) == 3:
+        if length_dim == 1:
+            lengths = lengths.unsqueeze(1).expand(*xs.transpose(1, 2).shape[:2])
+        else:
+            # Then length_dim is 2 or -1.
+            if length_dim not in (-1, 2):
+                logging.warning(
+                    f"Invalid length_dim {length_dim}."
+                    + "We set it to -1, which is the default value."
+                )
+                length_dim = -1
+            lengths = lengths.unsqueeze(1).expand(*xs.shape[:2])
+
+    if maxlen is not None:
+        assert xs is None
+        assert maxlen >= lengths.max()
+    elif xs is not None:
+        maxlen = xs.shape[length_dim]
+    else:
+        maxlen = lengths.max()
+
+    # clip max(length) to maxlen
+    lengths = torch.clamp(lengths, max=maxlen).type(torch.long)
+
+    mask = torch.ones(maxlen + 1, maxlen + 1, dtype=torch.bool, device=device)
+    mask = triu_onnx(mask)[1:, :-1]  # onnx cannot handle diagonal argument.
+    mask = mask[lengths - 1][..., :maxlen]
+
+    if xs is not None and len(xs.shape) == 3 and length_dim == 1:
+        return mask.transpose(1, 2)
+    else:
+        return mask
+
+
+def triu_onnx(x):
+    """Make TriU for ONNX."""
+    arange = torch.arange(x.size(0), device=x.device)
+    mask = arange.unsqueeze(-1).expand(-1, x.size(0)) <= arange
+    return x * mask
 
 
 def make_non_pad_mask(lengths, xs=None, length_dim=-1):
@@ -501,3 +581,99 @@ def get_activation(act):
     }
 
     return activation_funcs[act]()
+
+
+def trim_by_ctc_posterior(
+    h: torch.Tensor,
+    ctc_probs: torch.Tensor,
+    masks: torch.Tensor,
+    pos_emb: torch.Tensor = None,
+):
+    """Trim the encoder hidden output using CTC posterior.
+
+    The continuous frames in the tail that confidently represent
+    blank symbols are trimmed.
+    """
+    # Empirical settings
+    frame_tolerance = 5
+    conf_tolerance = 0.95
+    blank_id = 0
+
+    assert masks.size(1) == 1
+    masks = masks.squeeze(1)
+    hlens = masks.sum(dim=1)
+    assert h.size()[:2] == ctc_probs.size()[:2]
+    assert h.size(0) == hlens.size(0)
+
+    # blank frames
+    max_values, max_indices = ctc_probs.max(dim=2)
+    blank_masks = torch.logical_and(
+        max_values > conf_tolerance, max_indices == blank_id
+    )
+
+    # plus ignored frames
+    joint_masks = torch.logical_or(blank_masks, ~masks)
+
+    # lengths after the trimming
+    B, T, _ = h.size()
+    frame_idx = torch.where(
+        joint_masks, -1, torch.arange(T).unsqueeze(0).repeat(B, 1).to(h.device)
+    )
+    after_lens = torch.where(
+        frame_idx.max(dim=-1)[0] + frame_tolerance + 1 < hlens,
+        frame_idx.max(dim=-1)[0] + frame_tolerance + 1,
+        hlens,
+    )
+
+    h = h[:, : max(after_lens)]
+    masks = ~make_pad_mask(after_lens).to(h.device).unsqueeze(1)
+
+    if pos_emb is None:
+        pos_emb = None
+    elif (hlens.max() * 2 - 1).item() == pos_emb.size(1):  # RelPositionalEncoding
+        pos_emb = pos_emb[
+            :, pos_emb.size(1) // 2 - h.size(1) + 1 : pos_emb.size(1) // 2 + h.size(1)
+        ]
+    else:
+        pos_emb = pos_emb[:, : h.size(1)]
+
+    return h, masks, pos_emb
+
+
+def roll_tensor(
+    x: torch.Tensor,
+    lengths: torch.Tensor,
+    roll_amounts: Optional[torch.Tensor] = None,
+    fixed_intervals: Optional[int] = None,
+) -> torch.Tensor:
+    """Left-roll tensor x by roll_amounts, only within lengths and optionally quantized.
+
+    Args:
+        x: input tensor (B, T, D)
+        lengths: lengths of each sequence (B,)
+        roll_amounts: random shift amounts (B,). If None, random shift
+            amounts are generated.
+        fixed_intervals: if not None, roll_amounts are quantized to
+            multiples of this.
+    Returns:
+        rolled_x: rolled tensor (B, T, D)
+    Useful to apply roll augmentation to the input, while considering
+    the input length for each sample.
+    """
+    B, T, D = x.shape
+
+    indices = torch.arange(T).unsqueeze(0).expand(B, T).to(x.device)  # (B, T)
+    lengths = lengths.unsqueeze(1)  # (B, 1)
+
+    if roll_amounts is None:
+        roll_amounts = torch.randint(0, lengths.max(), (B,), device=x.device)
+    if fixed_intervals is not None:
+        roll_amounts = (roll_amounts // fixed_intervals) * fixed_intervals
+    roll_indices = (indices - roll_amounts.unsqueeze(1)) % lengths  # (B, T)
+    roll_indices = roll_indices.unsqueeze(2).expand(-1, -1, D)  # (B, T, D)
+
+    mask = indices < lengths  # (B, T), True if position is valid
+    rolled_x = torch.empty_like(x)
+    rolled_x[mask] = x.gather(1, roll_indices)[mask]
+    rolled_x[~mask] = x[~mask]
+    return rolled_x

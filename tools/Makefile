@@ -1,5 +1,6 @@
-# PyTorch version: 1.4.0, 1.5.1, 1.6.0, 1.7.1, 1.8.1, 1.9.1, 1.10.0, 1.10.1, 1.11.0 and 1.12.1 are tested.
-TH_VERSION := 1.13.1
+# PyTorch version: The latest six versions have been tested.
+# Please check https://github.com/espnet/espnet?tab=readme-ov-file#espnet-end-to-end-speech-processing-toolkit
+TH_VERSION := 2.6.0
 
 # Use pip for pytorch installation even if you have anaconda
 ifneq ($(shell test -f ./activate_python.sh && grep 'conda activate' ./activate_python.sh),)
@@ -26,13 +27,13 @@ WITH_OMP=ON
 
 .PHONY: all clean
 
-all: showenv python conda_packages.done ffmpeg.done sctk sph2pipe check_install
+all: showenv conda_packages.done python ffmpeg.done sctk check_install
 
-python: activate_python.sh packaging.done espnet.done pytorch.done chainer.done fairscale.done torch_optimizer.done
-extra: warp-transducer.done chainer_ctc.done nkf.done moses.done mwerSegmenter.done pesq kenlm.done pyopenjtalk.done py3mmseg.done beamformit.done fairseq.done s3prl.done k2.done transformers.done phonemizer.done longformer.done muskits.done whisper.done rvad_fast.done sounfile_test parallel-wavegan.done
+python: activate_python.sh setuptools.done packaging.done espnet.done pytorch.done chainer.done fairscale.done torch_optimizer.done flash_attn.done lightning.done
+extra: warp-transducer.done nkf.done moses.done mwerSegmenter.done pesq kenlm.done pyopenjtalk.done py3mmseg.done beamformit.done fairseq.done s3prl.done k2.done transformers.done phonemizer.done longformer.done muskits.done whisper.done rvad_fast.done sounfile_test parallel-wavegan.done lora.done sph2pipe torcheval.done
 
 activate_python.sh:
-	test -f activate_python.sh || { echo "Error: Run ./setup_python.sh or ./setup_anaconda.sh"; exit 1; }
+	test -f activate_python.sh || { echo "Error: Run ./setup_python.sh or ./setup_miniforge.sh"; exit 1; }
 
 ################ Logging ################
 showenv: activate_python.sh
@@ -53,7 +54,7 @@ bc.done: activate_python.sh
 	. ./activate_python.sh && { command -v bc || conda install -y bc -c conda-forge; }
 	touch bc.done
 cmake.done: activate_python.sh
-	. ./activate_python.sh && { command -v cmake || conda install -y cmake; }
+	. ./activate_python.sh && { command -v cmake || conda install -y "cmake<4.0"; }
 	touch cmake.done
 flac.done: activate_python.sh
 	. ./activate_python.sh && { command -v flac || conda install -y libflac -c conda-forge; }
@@ -89,11 +90,24 @@ sph2pipe: sph2pipe/sph2pipe
 sph2pipe/sph2pipe:
 	./installers/install_sph2pipe.sh
 
-packaging.done: activate_python.sh
+setuptools.done: activate_python.sh
+	# NOTE(jiatong): For python 3.12 case, as distutils are not default from 3.12
+	. ./activate_python.sh && { python -m ensurepip --upgrade; pip install setuptools; }
+	touch setuptools.done
+
+packaging.done: setuptools.done
 	. ./activate_python.sh && python3 -m pip install packaging
 	touch packaging.done
 
-numba.done: activate_python.sh
+numpy.done: activate_python.sh
+ifeq ($(strip $(USE_CONDA)),)
+	. ./activate_python.sh && python3 -m pip install numpy
+else
+	. ./activate_python.sh && conda install -y numpy
+endif
+	touch numpy.done
+
+numba.done: numpy.done
 	. ./activate_python.sh && python3 -m pip install -U numba
 	touch numba.done
 
@@ -107,11 +121,16 @@ else
 endif
 	touch pytorch.done
 
+lightning.done: pytorch.done
+	. ./activate_python.sh && ./installers/install_lightning.sh
+	touch lightning.done
+
 # NOTE(kamo): conda_packages is not necessary for installation of espnet, but add it the dependencies just in case.
-espnet.done: pytorch.done conda_packages.done
+espnet.done: pytorch.done conda_packages.done lightning.done
 	@echo NUMPY_VERSION=$(shell . ./activate_python.sh && python3 -c "import numpy; print(numpy.__version__)")
 	. ./activate_python.sh && python3 -m pip install -e "..[train, recipe]"  # Install editable mode by default
 	@echo NUMPY_VERSION=$(shell . ./activate_python.sh && python3 -c "import numpy; print(numpy.__version__)")
+	. ./activate_python.sh && python -m nltk.downloader averaged_perceptron_tagger_eng
 	touch espnet.done
 
 sounfile_test: espnet.done
@@ -208,6 +227,10 @@ whisper.done: espnet.done
 	. ./activate_python.sh && ./installers/install_whisper.sh
 	touch whisper.done
 
+lora.done: espnet.done
+	. ./activate_python.sh && ./installers/install_lora.sh
+	touch lora.done
+
 k2.done: espnet.done
 	. ./activate_python.sh && ./installers/install_k2.sh
 	touch k2.done
@@ -220,6 +243,9 @@ transformers.done: espnet.done
 	. ./activate_python.sh && ./installers/install_transformers.sh
 	touch transformers.done
 
+torcheval.done: pytorch.done
+	. ./activate_python.sh && ./installers/install_torcheval.sh
+	touch torcheval.done
 
 parallel-wavegan.done: espnet.done
 	. ./activate_python.sh && ./installers/install_parallel-wavegan.sh
@@ -228,6 +254,10 @@ parallel-wavegan.done: espnet.done
 longformer.done: espnet.done
 	. ./activate_python.sh && ./installers/install_longformer.sh
 	touch longformer.done
+
+flash_attn.done: espnet.done
+	. ./activate_python.sh && ./installers/install_flash_attn.sh
+	touch flash_attn.done
 
 muskits.done: espnet.done
 	. ./activate_python.sh && ./installers/install_muskits.sh
@@ -240,6 +270,14 @@ cauchy_mult.done: espnet.done
 rvad_fast.done: espnet.done
 	git clone https://github.com/zhenghuatan/rVADfast.git
 	touch rvad_fast.done
+
+discrete_speech_metrics.done: espnet.done
+	. ./activate_python.sh && ./installers/install_discrete_speech_metrics.sh
+	touch discrete_speech_metrics.done
+
+versa.done: espnet.done
+	. ./activate_python.sh && ./installers/install_versa.sh
+	touch versa.done
 
 check_install: python
 	. ./activate_python.sh; . ./extra_path.sh; python3 check_install.py
@@ -259,5 +297,8 @@ clean_extra:
 	rm -rf hts_engine_API.done open_jtalk.done pyopenjtalk.done
 	rm -rf muskits.done
 	rm -rf rvad_fast.done
+	rm -rf lightning_constraints.txt
+	rm -rf chainer espeak-ng festival MBROLA ParallelWaveGAN versa
+	rm -rf py3mmseg sctk* speech_tools sph2pipe* ._mwerSegmenter
 	rm -rf nkf mecab swig moses mwerSegmenter
 	rm -rf PESQ PESQ.zip

@@ -5,7 +5,7 @@ from typing import Callable, Collection, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-from typeguard import check_argument_types, check_return_type
+from typeguard import typechecked
 
 from espnet2.diar.layers.abs_mask import AbsMask
 from espnet2.diar.layers.multi_mask import MultiMask
@@ -14,6 +14,9 @@ from espnet2.enh.decoder.abs_decoder import AbsDecoder
 from espnet2.enh.decoder.conv_decoder import ConvDecoder
 from espnet2.enh.decoder.null_decoder import NullDecoder
 from espnet2.enh.decoder.stft_decoder import STFTDecoder
+from espnet2.enh.diffusion.abs_diffusion import AbsDiffusion
+from espnet2.enh.diffusion.score_based_diffusion import ScoreModel
+from espnet2.enh.diffusion_enh import ESPnetDiffusionModel
 from espnet2.enh.encoder.abs_encoder import AbsEncoder
 from espnet2.enh.encoder.conv_encoder import ConvEncoder
 from espnet2.enh.encoder.null_encoder import NullEncoder
@@ -43,6 +46,7 @@ from espnet2.enh.loss.wrappers.multilayer_pit_solver import MultiLayerPITSolver
 from espnet2.enh.loss.wrappers.pit_solver import PITSolver
 from espnet2.enh.separator.abs_separator import AbsSeparator
 from espnet2.enh.separator.asteroid_models import AsteroidModel_Converter
+from espnet2.enh.separator.bsrnn_separator import BSRNNSeparator
 from espnet2.enh.separator.conformer_separator import ConformerSeparator
 from espnet2.enh.separator.dan_separator import DANSeparator
 from espnet2.enh.separator.dc_crn_separator import DC_CRNSeparator
@@ -59,7 +63,11 @@ from espnet2.enh.separator.skim_separator import SkiMSeparator
 from espnet2.enh.separator.svoice_separator import SVoiceSeparator
 from espnet2.enh.separator.tcn_separator import TCNSeparator
 from espnet2.enh.separator.tfgridnet_separator import TFGridNet
+from espnet2.enh.separator.tfgridnetv2_separator import TFGridNetV2
+from espnet2.enh.separator.tfgridnetv3_separator import TFGridNetV3
 from espnet2.enh.separator.transformer_separator import TransformerSeparator
+from espnet2.enh.separator.uses2_separator import USES2Separator
+from espnet2.enh.separator.uses_separator import USESSeparator
 from espnet2.iterators.abs_iter_factory import AbsIterFactory
 from espnet2.tasks.abs_task import AbsTask
 from espnet2.torch_utils.initialize import initialize
@@ -74,7 +82,7 @@ from espnet2.train.preprocessor import (
 from espnet2.train.trainer import Trainer
 from espnet2.utils.get_default_kwargs import get_default_kwargs
 from espnet2.utils.nested_dict_action import NestedDictAction
-from espnet2.utils.types import str2bool, str_or_none
+from espnet2.utils.types import int_or_none, str2bool, str_or_none
 
 encoder_choices = ClassChoices(
     name="encoder",
@@ -87,6 +95,7 @@ separator_choices = ClassChoices(
     name="separator",
     classes=dict(
         asteroid=AsteroidModel_Converter,
+        bsrnn=BSRNNSeparator,
         conformer=ConformerSeparator,
         dan=DANSeparator,
         dc_crn=DC_CRNSeparator,
@@ -105,6 +114,10 @@ separator_choices = ClassChoices(
         tcn_nomask=TCNSeparatorNomask,
         ineube=iNeuBe,
         tfgridnet=TFGridNet,
+        tfgridnetv2=TFGridNetV2,
+        tfgridnetv3=TFGridNetV3,
+        uses=USESSeparator,
+        uses2=USES2Separator,
     ),
     type_check=AbsSeparator,
     default="rnn",
@@ -168,6 +181,15 @@ preprocessor_choices = ClassChoices(
     default=None,
 )
 
+# Deffusion-based model related choices
+diffusion_choices = ClassChoices(
+    name="diffusion_model",
+    classes=dict(sgmse=ScoreModel),
+    type_check=AbsDiffusion,
+    default=None,
+)
+
+
 MAX_REFERENCE_NUM = 100
 
 
@@ -186,6 +208,8 @@ class EnhancementTask(AbsTask):
         mask_module_choices,
         # --preprocessor and --preprocessor_conf
         preprocessor_choices,
+        # --diffusion_model and --diffusion_model_conf
+        diffusion_choices,
     ]
 
     # If you need to modify train() or eval() procedures, change Trainer class here
@@ -313,6 +337,43 @@ class EnhancementTask(AbsTask):
             default=False,
             help="Whether to force all data to be single-channel.",
         )
+        group.add_argument(
+            "--channel_reordering",
+            type=str2bool,
+            default=False,
+            help="Whether to randomly reorder the channels of the "
+            "multi-channel signals.",
+        )
+        group.add_argument(
+            "--categories",
+            nargs="+",
+            default=[],
+            type=str,
+            help="The set of all possible categories in the dataset. Used to add the "
+            "category information to each sample",
+        )
+        group.add_argument(
+            "--speech_segment",
+            type=int_or_none,
+            default=None,
+            help="Truncate the audios to the specified length (in samples) if not None",
+        )
+        group.add_argument(
+            "--avoid_allzero_segment",
+            type=str2bool,
+            default=True,
+            help="Only used when --speech_segment is specified. If True, make sure "
+            "all truncated segments are not all-zero",
+        )
+        group.add_argument(
+            "--flexible_numspk",
+            type=str2bool,
+            default=False,
+            help="Whether to load variable numbers of speakers in each sample. "
+            "In this case, only the first-speaker files such as 'spk1.scp' and "
+            "'dereverb1.scp' are used, which are expected to have multiple columns. "
+            "Other numbered files such as 'spk2.scp' and 'dereverb2.scp' are ignored.",
+        )
 
         group.add_argument(
             "--dynamic_mixing",
@@ -320,14 +381,12 @@ class EnhancementTask(AbsTask):
             default=False,
             help="Apply dynamic mixing",
         )
-
         group.add_argument(
             "--utt2spk",
             type=str_or_none,
             default=None,
             help="The file path of utt2spk file. Only used in dynamic_mixing mode.",
         )
-
         group.add_argument(
             "--dynamic_mixing_gain_db",
             type=float,
@@ -341,94 +400,73 @@ class EnhancementTask(AbsTask):
             class_choices.add_arguments(group)
 
     @classmethod
-    def build_collate_fn(
-        cls, args: argparse.Namespace, train: bool
-    ) -> Callable[
+    @typechecked
+    def build_collate_fn(cls, args: argparse.Namespace, train: bool) -> Callable[
         [Collection[Tuple[str, Dict[str, np.ndarray]]]],
         Tuple[List[str], Dict[str, torch.Tensor]],
     ]:
-        assert check_argument_types()
 
         return CommonCollateFn(float_pad_value=0.0, int_pad_value=0)
 
     @classmethod
+    @typechecked
     def build_preprocess_fn(
         cls, args: argparse.Namespace, train: bool
     ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
-        assert check_argument_types()
 
         use_preprocessor = getattr(args, "preprocessor", None) is not None
 
         if use_preprocessor:
             # TODO(simpleoier): To make this as simple as model parts, e.g. encoder
             if args.preprocessor == "dynamic_mixing":
-                if train:
-                    retval = preprocessor_choices.get_class(args.preprocessor)(
-                        train=train,
-                        source_scp=os.path.join(
-                            os.path.dirname(
-                                args.train_data_path_and_name_and_type[0][0]
-                            ),
-                            args.preprocessor_conf.get("source_scp_name", "spk1.scp"),
-                        ),
-                        ref_num=args.preprocessor_conf.get(
-                            "ref_num",
-                            args.separator_conf["num_spk"],
-                        ),
-                        dynamic_mixing_gain_db=args.preprocessor_conf.get(
-                            "dynamic_mixing_gain_db",
-                            0.0,
-                        ),
-                        speech_name=args.preprocessor_conf.get(
-                            "speech_name",
-                            "speech_mix",
-                        ),
-                        speech_ref_name_prefix=args.preprocessor_conf.get(
-                            "speech_ref_name_prefix",
-                            "speech_ref",
-                        ),
-                        mixture_source_name=args.preprocessor_conf.get(
-                            "mixture_source_name",
-                            None,
-                        ),
-                        utt2spk=getattr(args, "utt2spk", None),
-                    )
-                else:
-                    retval = None
-            elif args.preprocessor == "enh":
                 retval = preprocessor_choices.get_class(args.preprocessor)(
                     train=train,
+                    source_scp=os.path.join(
+                        os.path.dirname(args.train_data_path_and_name_and_type[0][0]),
+                        args.preprocessor_conf.get("source_scp_name", "spk1.scp"),
+                    ),
+                    ref_num=args.preprocessor_conf.get(
+                        "ref_num", args.separator_conf["num_spk"]
+                    ),
+                    dynamic_mixing_gain_db=args.preprocessor_conf.get(
+                        "dynamic_mixing_gain_db", 0.0
+                    ),
+                    speech_name=args.preprocessor_conf.get("speech_name", "speech_mix"),
+                    speech_ref_name_prefix=args.preprocessor_conf.get(
+                        "speech_ref_name_prefix", "speech_ref"
+                    ),
+                    mixture_source_name=args.preprocessor_conf.get(
+                        "mixture_source_name", None
+                    ),
+                    utt2spk=getattr(args, "utt2spk", None),
+                    categories=args.preprocessor_conf.get("categories", None),
+                )
+            elif args.preprocessor == "enh":
+                kwargs = dict(
                     # NOTE(kamo): Check attribute existence for backward compatibility
-                    rir_scp=args.rir_scp if hasattr(args, "rir_scp") else None,
-                    rir_apply_prob=args.rir_apply_prob
-                    if hasattr(args, "rir_apply_prob")
-                    else 1.0,
-                    noise_scp=args.noise_scp if hasattr(args, "noise_scp") else None,
-                    noise_apply_prob=args.noise_apply_prob
-                    if hasattr(args, "noise_apply_prob")
-                    else 1.0,
-                    noise_db_range=args.noise_db_range
-                    if hasattr(args, "noise_db_range")
-                    else "13_15",
-                    short_noise_thres=args.short_noise_thres
-                    if hasattr(args, "short_noise_thres")
-                    else 0.5,
-                    speech_volume_normalize=args.speech_volume_normalize
-                    if hasattr(args, "speech_volume_normalize")
-                    else None,
-                    use_reverberant_ref=args.use_reverberant_ref
-                    if hasattr(args, "use_reverberant_ref")
-                    else None,
-                    num_spk=args.num_spk if hasattr(args, "num_spk") else 1,
-                    num_noise_type=args.num_noise_type
-                    if hasattr(args, "num_noise_type")
-                    else 1,
-                    sample_rate=args.sample_rate
-                    if hasattr(args, "sample_rate")
-                    else 8000,
-                    force_single_channel=args.force_single_channel
-                    if hasattr(args, "force_single_channel")
-                    else False,
+                    rir_scp=getattr(args, "rir_scp", None),
+                    rir_apply_prob=getattr(args, "rir_apply_prob", 1.0),
+                    noise_scp=getattr(args, "noise_scp", None),
+                    noise_apply_prob=getattr(args, "noise_apply_prob", 1.0),
+                    noise_db_range=getattr(args, "noise_db_range", "13_15"),
+                    short_noise_thres=getattr(args, "short_noise_thres", 0.5),
+                    speech_volume_normalize=getattr(
+                        args, "speech_volume_normalize", None
+                    ),
+                    use_reverberant_ref=getattr(args, "use_reverberant_ref", None),
+                    num_spk=getattr(args, "num_spk", 1),
+                    num_noise_type=getattr(args, "num_noise_type", 1),
+                    sample_rate=getattr(args, "sample_rate", 8000),
+                    force_single_channel=getattr(args, "force_single_channel", False),
+                    channel_reordering=getattr(args, "channel_reordering", False),
+                    categories=getattr(args, "categories", None),
+                    speech_segment=getattr(args, "speech_segment", None),
+                    avoid_allzero_segment=getattr(args, "avoid_allzero_segment", True),
+                    flexible_numspk=getattr(args, "flexible_numspk", False),
+                )
+                kwargs.update(args.preprocessor_conf)
+                retval = preprocessor_choices.get_class(args.preprocessor)(
+                    train=train, **kwargs
                 )
             else:
                 raise ValueError(
@@ -436,7 +474,6 @@ class EnhancementTask(AbsTask):
                 )
         else:
             retval = None
-        assert check_return_type(retval)
         return retval
 
     @classmethod
@@ -458,19 +495,20 @@ class EnhancementTask(AbsTask):
         retval += ["dereverb_ref{}".format(n) for n in range(1, MAX_REFERENCE_NUM + 1)]
         retval += ["speech_ref{}".format(n) for n in range(2, MAX_REFERENCE_NUM + 1)]
         retval += ["noise_ref{}".format(n) for n in range(1, MAX_REFERENCE_NUM + 1)]
+        retval += ["category", "fs"]
         retval = tuple(retval)
-        assert check_return_type(retval)
         return retval
 
     @classmethod
+    @typechecked
     def build_model(cls, args: argparse.Namespace) -> ESPnetEnhancementModel:
-        assert check_argument_types()
 
         encoder = encoder_choices.get_class(args.encoder)(**args.encoder_conf)
         separator = separator_choices.get_class(args.separator)(
             encoder.output_dim, **args.separator_conf
         )
         decoder = decoder_choices.get_class(args.decoder)(**args.decoder_conf)
+
         if args.separator.endswith("nomask"):
             mask_module = mask_module_choices.get_class(args.mask_module)(
                 input_dim=encoder.output_dim,
@@ -493,21 +531,33 @@ class EnhancementTask(AbsTask):
                 loss_wrappers.append(loss_wrapper)
 
         # 1. Build model
-        model = ESPnetEnhancementModel(
-            encoder=encoder,
-            separator=separator,
-            decoder=decoder,
-            loss_wrappers=loss_wrappers,
-            mask_module=mask_module,
-            **args.model_conf,
-        )
+        if getattr(args, "diffusion_model", None) is not None:
+            diffusion_model = diffusion_choices.get_class(args.diffusion_model)(
+                **args.diffusion_model_conf
+            )
+            # build diffusion model
+            model = ESPnetDiffusionModel(
+                encoder=encoder,
+                diffusion=diffusion_model,
+                decoder=decoder,
+                **args.model_conf,
+            )
+
+        else:
+            model = ESPnetEnhancementModel(
+                encoder=encoder,
+                separator=separator,
+                decoder=decoder,
+                loss_wrappers=loss_wrappers,
+                mask_module=mask_module,
+                **args.model_conf,
+            )
 
         # FIXME(kamo): Should be done in model?
         # 2. Initialize
         if args.init is not None:
             initialize(model, args.init)
 
-        assert check_return_type(model)
         return model
 
     @classmethod

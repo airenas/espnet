@@ -10,7 +10,7 @@ from typing import Optional, Tuple
 
 import torch
 from filelock import FileLock
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet.nets.pytorch_backend.nets_utils import make_pad_mask
@@ -30,6 +30,7 @@ class FairSeqWav2Vec2Encoder(AbsEncoder):
                                 0 means to finetune every layer if freeze_w2v=False.
     """
 
+    @typechecked
     def __init__(
         self,
         input_size: int,
@@ -39,7 +40,6 @@ class FairSeqWav2Vec2Encoder(AbsEncoder):
         normalize_before: bool = False,
         freeze_finetune_updates: int = 0,
     ):
-        assert check_argument_types()
         super().__init__()
 
         if w2v_url != "":
@@ -90,7 +90,7 @@ class FairSeqWav2Vec2Encoder(AbsEncoder):
             self.output_layer = None
 
         self.freeze_finetune_updates = freeze_finetune_updates
-        self.register_buffer("num_updates", torch.LongTensor([0]))
+        self.register_buffer("num_updates", torch.tensor([0], dtype=torch.long))
 
     def output_size(self) -> int:
         return self._output_size

@@ -8,13 +8,15 @@ from typing import Callable, Collection, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 import yaml
-from typeguard import check_argument_types, check_return_type
+from typeguard import typechecked
 
 from espnet2.gan_svs.joint import JointScore2Wav
 from espnet2.gan_svs.vits import VITS
 from espnet2.layers.abs_normalize import AbsNormalize
 from espnet2.layers.global_mvn import GlobalMVN
 from espnet2.svs.abs_svs import AbsSVS
+from espnet2.svs.discrete.toksing import TokSing
+from espnet2.svs.discrete_svs_espnet_model import ESPnetDiscreteSVSModel
 from espnet2.svs.espnet_model import ESPnetSVSModel
 from espnet2.svs.feats_extract.score_feats_extract import (
     FrameScoreFeats,
@@ -22,14 +24,16 @@ from espnet2.svs.feats_extract.score_feats_extract import (
 )
 from espnet2.svs.naive_rnn.naive_rnn import NaiveRNN
 from espnet2.svs.naive_rnn.naive_rnn_dp import NaiveRNNDP
-from espnet2.svs.xiaoice.XiaoiceSing import XiaoiceSing
 
 # TODO(Yuning): Models to be added
-# from espnet2.svs.singing_tacotron2.singing_tacotron2 import singing_tacotron2
+from espnet2.svs.singing_tacotron.singing_tacotron import singing_tacotron
+from espnet2.svs.xiaoice.XiaoiceSing import XiaoiceSing
+
 # from espnet2.svs.encoder_decoder.transformer.transformer import Transformer
 # from espnet2.svs.mlp_singer.mlp_singer import MLPSinger
 # from espnet2.svs.glu_transformer.glu_transformer import GLU_Transformer
 from espnet2.tasks.abs_task import AbsTask
+from espnet2.train.abs_espnet_model import AbsESPnetModel
 from espnet2.train.class_choices import ClassChoices
 from espnet2.train.collate_fn import CommonCollateFn
 from espnet2.train.preprocessor import SVSPreprocessor
@@ -123,14 +127,24 @@ svs_choices = ClassChoices(
         naive_rnn=NaiveRNN,
         naive_rnn_dp=NaiveRNNDP,
         xiaoice=XiaoiceSing,
+        toksing=TokSing,
         # xiaoice_noDP=XiaoiceSing_noDP,
         vits=VITS,
         joint_score2wav=JointScore2Wav,
         # mlp=MLPSinger,
-        # singing_tacotron2=singing_tacotron2,
+        singing_tacotron=singing_tacotron,
     ),
     type_check=AbsSVS,
     default="naive_rnn",
+)
+model_type_choices = ClassChoices(
+    "model_type",
+    classes=dict(
+        svs=ESPnetSVSModel,
+        discrete_svs=ESPnetDiscreteSVSModel,
+    ),
+    type_check=AbsESPnetModel,
+    default="svs",
 )
 
 
@@ -157,15 +171,17 @@ class SVSTask(AbsTask):
         energy_extractor_choices,
         # --energy_normalize and --energy_normalize_conf
         energy_normalize_choices,
+        # --model_type and --model_type_conf
+        model_type_choices,
     ]
 
     # If you need to modify train() or eval() procedures, change Trainer class here
     trainer = Trainer
 
     @classmethod
+    @typechecked
     def add_task_arguments(cls, parser: argparse.ArgumentParser):
         # NOTE(kamo): Use '_' instead of '-' to avoid confusion
-        assert check_argument_types()
         group = parser.add_argument_group(description="Task related")
 
         # NOTE(kamo): add_arguments(..., required=True) can't be used
@@ -250,6 +266,18 @@ class SVSTask(AbsTask):
             default=24000,  # BUG: another fs in feats_extract_conf
             help="sample rate",
         )
+        parser.add_argument(
+            "--discrete_token_layers",
+            type=int,
+            default=1,
+            help="layers of discrete tokens",
+        )
+        parser.add_argument(
+            "--nclusters",
+            type=int,
+            default=1024,
+            help="number of cluster centers",
+        )
 
         for class_choices in cls.class_choices_list:
             # Append --<name> and --<name>_conf.
@@ -257,13 +285,11 @@ class SVSTask(AbsTask):
             class_choices.add_arguments(group)
 
     @classmethod
-    def build_collate_fn(
-        cls, args: argparse.Namespace, train: bool
-    ) -> Callable[
+    @typechecked
+    def build_collate_fn(cls, args: argparse.Namespace, train: bool) -> Callable[
         [Collection[Tuple[str, Dict[str, np.ndarray]]]],
         Tuple[List[str], Dict[str, torch.Tensor]],
     ]:
-        assert check_argument_types()
         return CommonCollateFn(
             float_pad_value=0.0,
             int_pad_value=0,
@@ -271,10 +297,10 @@ class SVSTask(AbsTask):
         )
 
     @classmethod
+    @typechecked
     def build_preprocess_fn(
         cls, args: argparse.Namespace, train: bool
-    ) -> Optional[Callable[[str, Dict[str, np.array], float], Dict[str, np.ndarray]]]:
-        assert check_argument_types()
+    ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
         if args.use_preprocessor:
             retval = SVSPreprocessor(
                 train=train,
@@ -289,11 +315,9 @@ class SVSTask(AbsTask):
             )
         else:
             retval = None
-        # FIXME (jiatong): sometimes checking is not working here
-        # assert check_return_type(retval)
+
         return retval
 
-    # TODO(Yuning): check new names
     @classmethod
     def required_data_names(
         cls, train: bool = True, inference: bool = False
@@ -319,15 +343,24 @@ class SVSTask(AbsTask):
                 "lids",
                 "feats",
                 "ying",
+                "discrete_token",
             )
         else:
             # Inference mode
-            retval = ("spembs", "singing", "pitch", "durations", "sids", "lids")
+            retval = (
+                "spembs",
+                "singing",
+                "pitch",
+                "durations",
+                "sids",
+                "lids",
+                "discrete_token",
+            )
         return retval
 
     @classmethod
+    @typechecked
     def build_model(cls, args: argparse.Namespace) -> ESPnetSVSModel:
-        assert check_argument_types()
         if isinstance(args.token_list, str):
             with open(args.token_list, encoding="utf-8") as f:
                 token_list = [line.rstrip() for line in f]
@@ -343,6 +376,9 @@ class SVSTask(AbsTask):
         vocab_size = len(token_list)
         logging.info(f"Vocabulary size: {vocab_size }")
 
+        kwargs = dict()
+
+        raw_model_type = getattr(args, "model_type", "svs")
         # 1. feats_extract
         if args.odim is None:
             # Extract features in the model
@@ -356,6 +392,11 @@ class SVSTask(AbsTask):
             feats_extract = None
             odim = args.odim
 
+        if raw_model_type == "discrete_svs":
+            odim = args.nclusters
+            discrete_token_layers = args.discrete_token_layers
+            kwargs.update(discrete_token_layers=discrete_token_layers)
+
         # 2. Normalization layer
         if args.normalize is not None:
             normalize_class = normalize_choices.get_class(args.normalize)
@@ -365,7 +406,16 @@ class SVSTask(AbsTask):
 
         # 3. SVS
         svs_class = svs_choices.get_class(args.svs)
-        svs = svs_class(idim=vocab_size, odim=odim, **args.svs_conf)
+        if raw_model_type == "discrete_svs":
+            svs = svs_class(
+                idim=vocab_size,
+                odim=odim,
+                discrete_token_layers=discrete_token_layers,
+                **args.svs_conf,
+            )
+        else:
+            svs = svs_class(idim=vocab_size, odim=odim, **args.svs_conf)
+        kwargs.update(svs=svs)
 
         # 4. Extra components
         score_feats_extract = None
@@ -425,23 +475,24 @@ class SVSTask(AbsTask):
             )
             energy_normalize = energy_normalize_class(**args.energy_normalize_conf)
 
+        kwargs.update(text_extract=score_feats_extract)
+        kwargs.update(feats_extract=feats_extract)
+        kwargs.update(score_feats_extract=score_feats_extract)
+        kwargs.update(label_extract=score_feats_extract)
+        kwargs.update(duration_extract=score_feats_extract)
+        kwargs.update(pitch_extract=pitch_extract)
+        kwargs.update(energy_extract=energy_extract)
+        kwargs.update(ying_extract=ying_extract)
+        kwargs.update(normalize=normalize)
+        kwargs.update(pitch_normalize=pitch_normalize)
+        kwargs.update(energy_normalize=energy_normalize)
+
         # 5. Build model
-        model = ESPnetSVSModel(
-            text_extract=score_feats_extract,
-            feats_extract=feats_extract,
-            score_feats_extract=score_feats_extract,
-            label_extract=score_feats_extract,
-            pitch_extract=pitch_extract,
-            ying_extract=ying_extract,
-            duration_extract=score_feats_extract,
-            energy_extract=energy_extract,
-            normalize=normalize,
-            pitch_normalize=pitch_normalize,
-            energy_normalize=energy_normalize,
-            svs=svs,
+        model_class = model_type_choices.get_class(raw_model_type)
+        model = model_class(
+            **kwargs,
             **args.model_conf,
         )
-        assert check_return_type(model)
         return model
 
     @classmethod

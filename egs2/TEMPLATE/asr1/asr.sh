@@ -24,23 +24,24 @@ min() {
 SECONDS=0
 
 # General configuration
-stage=1              # Processes starts from the specified stage.
-stop_stage=10000     # Processes is stopped at the specified stage.
-skip_stages=         # Spicify the stage to be skipped
-skip_data_prep=false # Skip data preparation stages.
-skip_train=false     # Skip training stages.
-skip_eval=false      # Skip decoding and evaluation stages.
-skip_upload=true # Skip packing and uploading to zenodo
-skip_upload_hf=true  # Skip uploading to hugging face stages.
-eval_valid_set=false # Run decoding for the validation set
-ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
-num_nodes=1          # The number of nodes.
-nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
-gpu_inference=false  # Whether to perform gpu decoding.
-dumpdir=dump         # Directory to dump features.
-expdir=exp           # Directory to save experiments.
-python=python3       # Specify python to execute espnet commands.
+stage=1                 # Processes starts from the specified stage.
+stop_stage=10000        # Processes is stopped at the specified stage.
+skip_stages=            # Spicify the stage to be skipped
+skip_data_prep=false    # Skip data preparation stages.
+skip_train=false        # Skip training stages.
+skip_eval=false         # Skip decoding and evaluation stages.
+skip_packing=true       # Skip the packing stage.
+skip_upload_hf=true     # Skip uploading to huggingface stage.
+eval_valid_set=false    # Run decoding for the validation set
+ngpu=1                  # The number of gpus ("0" uses cpu, otherwise use gpu).
+num_nodes=1             # The number of nodes.
+nj=32                   # The number of parallel jobs.
+inference_nj=32         # The number of parallel jobs in decoding.
+gpu_inference=false     # Whether to perform gpu decoding.
+dumpdir=dump            # Directory to dump features.
+expdir=exp              # Directory to save experiments.
+python=python3          # Specify python to execute espnet commands.
+use_lightning=false     # Whether to use pytorch lightning trainer for training.
 
 # Data preparation related
 local_data_opts= # The options given to local/data.sh.
@@ -89,6 +90,9 @@ use_word_lm=false # Whether to use word language model.
 num_splits_lm=1   # Number of splitting for lm corpus.
 # shellcheck disable=SC2034
 word_vocab_size=10000 # Size of word vocabulary.
+use_prompt=false # Use prompt ids for multi tasking
+use_lang_prompt=false # Use language prompt ids for multi lingual multi tasking
+use_nlp_prompt=false # Use text prompt ids for multi lingual multi tasking
 
 # ASR model related
 asr_task=asr   # ASR task mode. Either 'asr' or 'asr_transducer'.
@@ -166,23 +170,24 @@ Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_s
 
 Options:
     # General configuration
-    --stage          # Processes starts from the specified stage (default="${stage}").
-    --stop_stage     # Processes is stopped at the specified stage (default="${stop_stage}").
-    --skip_stages    # Spicify the stage to be skipped (default="${skip_stages}").
-    --skip_data_prep # Skip data preparation stages (default="${skip_data_prep}").
-    --skip_train     # Skip training stages (default="${skip_train}").
-    --skip_eval      # Skip decoding and evaluation stages (default="${skip_eval}").
-    --skip_upload    # Skip packing and uploading stages (default="${skip_upload}").
-    --skip_upload_hf    # Skip packing and uploading stages (default="${skip_upload_hf}").
-    --eval_valid_set # Run decoding for the validation set (default="${eval_valid_set}").
-    --ngpu           # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
-    --num_nodes      # The number of nodes (default="${num_nodes}").
-    --nj             # The number of parallel jobs (default="${nj}").
-    --inference_nj   # The number of parallel jobs in decoding (default="${inference_nj}").
-    --gpu_inference  # Whether to perform gpu decoding (default="${gpu_inference}").
-    --dumpdir        # Directory to dump features (default="${dumpdir}").
-    --expdir         # Directory to save experiments (default="${expdir}").
-    --python         # Specify python to execute espnet commands (default="${python}").
+    --stage              # Processes starts from the specified stage (default="${stage}").
+    --stop_stage         # Processes is stopped at the specified stage (default="${stop_stage}").
+    --skip_stages        # Spicify the stage to be skipped (default="${skip_stages}").
+    --skip_data_prep     # Skip data preparation stages (default="${skip_data_prep}").
+    --skip_train         # Skip training stages (default="${skip_train}").
+    --skip_eval          # Skip decoding and evaluation stages (default="${skip_eval}").
+    --skip_packing       # Skip the packing stage (default="${skip_packing}").
+    --skip_upload_hf     # Skip uploading to huggingface stage (default="${skip_upload_hf}").
+    --eval_valid_set     # Run decoding for the validation set (default="${eval_valid_set}").
+    --ngpu               # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
+    --num_nodes          # The number of nodes (default="${num_nodes}").
+    --nj                 # The number of parallel jobs (default="${nj}").
+    --inference_nj       # The number of parallel jobs in decoding (default="${inference_nj}").
+    --gpu_inference      # Whether to perform gpu decoding (default="${gpu_inference}").
+    --dumpdir            # Directory to dump features (default="${dumpdir}").
+    --expdir             # Directory to save experiments (default="${expdir}").
+    --python             # Specify python to execute espnet commands (default="${python}").
+    --use_lightning      # Whether to use pytorch lightning trainer for training (default="${use_lightning}").
 
     # Data preparation related
     --local_data_opts # The options given to local/data.sh (default="${local_data_opts}").
@@ -218,6 +223,9 @@ Options:
                       # e.g., --lm_args "--max_epoch 10"
                       # Note that it will overwrite args in lm config.
     --use_word_lm     # Whether to use word language model (default="${use_word_lm}").
+    --use_prompt     # Whether to use prompt for multi  tasking (default="${use_prompt}").
+    --use_lang_prompt     # Whether to use language prompt for multi  tasking (default="${use_lang_prompt}").
+    --use_nlp_prompt     # Whether to use nlp prompt for multi  tasking (default="${use_nlp_prompt}").
     --word_vocab_size # Size of word vocabulary (default="${word_vocab_size}").
     --num_splits_lm   # Number of splitting for lm corpus (default="${num_splits_lm}").
 
@@ -548,12 +556,11 @@ if "${skip_eval}"; then
     skip_stages+="12 13 "
 fi
 
-if "${skip_upload}" && "${skip_upload_hf}"; then
-    skip_stages+="14 15 16 "
-elif "${skip_upload}"; then
+if "${skip_packing}"; then
+    skip_stages+="14 "
+fi
+if "${skip_upload_hf}"; then
     skip_stages+="15 "
-elif "${skip_upload_hf}"; then
-    skip_stages+="16 "
 fi
 skip_stages=$(echo "${skip_stages}" | tr ' ' '\n' | sort -nu | tr '\n' ' ')
 log "Skipped stages: ${skip_stages}"
@@ -947,16 +954,18 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ] && ! [[ " ${skip_stages} " =~ [
     elif grep -q "whisper" <<< ${token_type}; then
         log "Stage 5: Generate whisper token_list from ${token_type} tokenizer"
 
-        if ${sot_asr}; then
-            log "Error: not supported SOT training for whisper token_list"
-            exit 2
-        fi
+
         # The first symbol in token_list must be "<blank>" and the last must be also sos/eos:
         # 0 is reserved for CTC-blank for ASR and also used as ignore-index in the other task
         echo ${token_list}
         ${python} -m espnet2.bin.whisper_export_vocabulary  \
             --whisper_model "${token_type}" \
+            --add_token_file_name "${nlsyms_txt}" \
+            --whisper_language "${lang}" \
+            --whisper_task "transcribe" \
+            --sot_asr "${sot_asr}" \
             --output "${token_list}"
+
     elif [ "${token_type}" = hugging_face ]; then
         log "Stage 5: Generate hugging_face token_list from ${hugging_face_model_name_or_path}"
 
@@ -1246,6 +1255,12 @@ if [ ${stage} -le 10 ] && [ ${stop_stage} -ge 10 ] && ! [[ " ${skip_stages} " =~
         _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/${ref_text_files[$i]},${ref_text_names[$i]},text "
         _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/${ref_text_files[$i]},${ref_text_names[$i]},text "
     done
+    if ${use_prompt}; then
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/prompt,prompt,text "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/prompt,prompt,text "
+        _opts+="--use_lang_prompt ${use_lang_prompt} "
+        _opts+="--use_nlp_prompt ${use_nlp_prompt} "
+    fi
 
     # shellcheck disable=SC2046,SC2086
     ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
@@ -1383,7 +1398,14 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/${ref_text_files[$i]},${ref_text_names[$i]},text "
         _opts+="--valid_shape_file ${asr_stats_dir}/valid/${ref_text_names[$i]}_shape.${token_type} "
     done
-
+    if ${use_prompt}; then
+        _opts+="--train_data_path_and_name_and_type ${_asr_train_dir}/prompt,prompt,text "
+        _opts+="--train_shape_file ${asr_stats_dir}/train/prompt_shape "
+        _opts+="--valid_data_path_and_name_and_type ${_asr_valid_dir}/prompt,prompt,text "
+        _opts+="--valid_shape_file ${asr_stats_dir}/valid/prompt_shape "
+        _opts+="--use_lang_prompt ${use_lang_prompt} "
+        _opts+="--use_nlp_prompt ${use_nlp_prompt} "
+    fi
     log "Generate '${asr_exp}/run.sh'. You can resume the process from stage 11 using this script"
     mkdir -p "${asr_exp}"; echo "${run_args} --stage 11 \"\$@\"; exit \$?" > "${asr_exp}/run.sh"; chmod +x "${asr_exp}/run.sh"
 
@@ -1396,31 +1418,62 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ] && ! [[ " ${skip_stages} " =~
         jobname="${asr_exp}/train.log"
     fi
 
-    # shellcheck disable=SC2086
-    ${python} -m espnet2.bin.launch \
-        --cmd "${cuda_cmd} --name ${jobname}" \
-        --log "${asr_exp}"/train.log \
-        --ngpu "${ngpu}" \
-        --num_nodes "${num_nodes}" \
-        --init_file_prefix "${asr_exp}"/.dist_init_ \
-        --multiprocessing_distributed true -- \
-        ${python} -m espnet2.bin.${asr_task}_train \
-            --use_preprocessor true \
-            --bpemodel "${bpemodel}" \
-            --token_type "${token_type}" \
-            --token_list "${token_list}" \
-            --non_linguistic_symbols "${nlsyms_txt}" \
-            --cleaner "${cleaner}" \
-            --g2p "${g2p}" \
-            --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
-            --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
-            --resume true \
-            ${pretrained_model:+--init_param $pretrained_model} \
-            --ignore_init_mismatch ${ignore_init_mismatch} \
-            --fold_length "${_fold_length}" \
-            --output_dir "${asr_exp}" \
-            ${_opts} ${asr_args}
+    if "${use_lightning}"; then
+        log "Use PyTorch Lightning trainer"
+        ${python} pyscripts/utils/rotate_logfile.py "${asr_exp}"/train.log
 
+        ${cuda_cmd} --name "${jobname}" \
+            --gpu "${ngpu}" \
+            --num_tasks "${ngpu}" \
+            --num_nodes "${num_nodes}" \
+            "${asr_exp}"/train.log \
+            srun --export=ALL \
+            ${python} -m espnet2.bin.lightning_train \
+                --task asr \
+                --lightning_conf "{devices: ${ngpu}, num_nodes: ${num_nodes}, default_root_dir: ${asr_exp}}" \
+                --use_preprocessor true \
+                --bpemodel "${bpemodel}" \
+                --token_type "${token_type}" \
+                --token_list "${token_list}" \
+                --non_linguistic_symbols "${nlsyms_txt}" \
+                --cleaner "${cleaner}" \
+                --g2p "${g2p}" \
+                --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
+                --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
+                --resume true \
+                ${pretrained_model:+--init_param $pretrained_model} \
+                --ignore_init_mismatch ${ignore_init_mismatch} \
+                --fold_length "${_fold_length}" \
+                --output_dir "${asr_exp}" \
+                ${_opts} ${asr_args}
+
+    else
+        log "Use ESPnet trainer"
+        # shellcheck disable=SC2086
+        ${python} -m espnet2.bin.launch \
+            --cmd "${cuda_cmd} --name ${jobname}" \
+            --log "${asr_exp}"/train.log \
+            --ngpu "${ngpu}" \
+            --num_nodes "${num_nodes}" \
+            --init_file_prefix "${asr_exp}"/.dist_init_ \
+            --multiprocessing_distributed true -- \
+            ${python} -m espnet2.bin.${asr_task}_train \
+                --use_preprocessor true \
+                --bpemodel "${bpemodel}" \
+                --token_type "${token_type}" \
+                --token_list "${token_list}" \
+                --non_linguistic_symbols "${nlsyms_txt}" \
+                --cleaner "${cleaner}" \
+                --g2p "${g2p}" \
+                --valid_data_path_and_name_and_type "${_asr_valid_dir}/${_scp},speech,${_type}" \
+                --valid_shape_file "${asr_stats_dir}/valid/speech_shape" \
+                --resume true \
+                ${pretrained_model:+--init_param $pretrained_model} \
+                --ignore_init_mismatch ${ignore_init_mismatch} \
+                --fold_length "${_fold_length}" \
+                --output_dir "${asr_exp}" \
+                ${_opts} ${asr_args}
+    fi
 fi
 
 
@@ -1620,7 +1673,11 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ] && ! [[ " ${skip_stages} " =~
             if [ "${_tok_type}" = "char" ] || [ "${_tok_type}" = "word" ]; then
                 _type="${_tok_type:0:1}er"
                 _opts+="--non_linguistic_symbols ${nlsyms_txt} "
-                _opts+="--remove_non_linguistic_symbols true "
+                if grep -q "whisper" <<< ${token_type}; then
+                    log "Non linguistic_symbols used for prompting"
+                else
+                    _opts+="--remove_non_linguistic_symbols true "
+                fi
 
             elif [ "${_tok_type}" = "bpe" ]; then
                 _type="ter"
@@ -1730,68 +1787,15 @@ fi
 
 
 if [ ${stage} -le 15 ] && [ ${stop_stage} -ge 15 ] && ! [[ " ${skip_stages} " =~ [[:space:]]15[[:space:]] ]]; then
-    log "Stage 15: Upload model to Zenodo: ${packed_model}"
-    log "Warning: Upload model to Zenodo will be deprecated. We encourage to use Hugging Face"
-
-    # To upload your model, you need to do:
-    #   1. Sign up to Zenodo: https://zenodo.org/
-    #   2. Create access token: https://zenodo.org/account/settings/applications/tokens/new/
-    #   3. Set your environment: % export ACCESS_TOKEN="<your token>"
-
-    if command -v git &> /dev/null; then
-        _creator_name="$(git config user.name)"
-        _checkout="
-git checkout $(git show -s --format=%H)"
-
-    else
-        _creator_name="$(whoami)"
-        _checkout=""
-    fi
-    # /some/where/espnet/egs2/foo/asr1/ -> foo/asr1
-    _task="$(pwd | rev | cut -d/ -f2 | rev)"
-    # foo/asr1 -> foo
-    _corpus="${_task%/*}"
-    _model_name="${_creator_name}/${_corpus}_$(basename ${packed_model} .zip)"
-
-    # Generate description file
-    cat << EOF > "${asr_exp}"/description
-This model was trained by ${_creator_name} using ${_task} recipe in <a href="https://github.com/espnet/espnet/">espnet</a>.
-<p>&nbsp;</p>
-<ul>
-<li><strong>Python API</strong><pre><code class="language-python">See https://github.com/espnet/espnet_model_zoo</code></pre></li>
-<li><strong>Evaluate in the recipe</strong><pre>
-<code class="language-bash">git clone https://github.com/espnet/espnet
-cd espnet${_checkout}
-pip install -e .
-cd $(pwd | rev | cut -d/ -f1-3 | rev)
-./run.sh --skip_data_prep false --skip_train true --download_model ${_model_name}</code>
-</pre></li>
-<li><strong>Results</strong><pre><code>$(cat "${asr_exp}"/RESULTS.md)</code></pre></li>
-<li><strong>ASR config</strong><pre><code>$(cat "${asr_exp}"/config.yaml)</code></pre></li>
-<li><strong>LM config</strong><pre><code>$(if ${use_lm}; then cat "${lm_exp}"/config.yaml; else echo NONE; fi)</code></pre></li>
-</ul>
-EOF
-
-    # NOTE(kamo): The model file is uploaded here, but not published yet.
-    #   Please confirm your record at Zenodo and publish it by yourself.
-
-    # shellcheck disable=SC2086
-    espnet_model_zoo_upload \
-        --file "${packed_model}" \
-        --title "ESPnet2 pretrained model, ${_model_name}, fs=${fs}, lang=${lang}" \
-        --description_file "${asr_exp}"/description \
-        --creator_name "${_creator_name}" \
-        --license "CC-BY-4.0" \
-        --use_sandbox false \
-        --publish false
-fi
-
-
-if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ] && ! [[ " ${skip_stages} " =~ [[:space:]]16[[:space:]] ]]; then
     [ -z "${hf_repo}" ] && \
         log "ERROR: You need to setup the variable hf_repo with the name of the repository located at HuggingFace, follow the following steps described here https://github.com/espnet/espnet/blob/master/CONTRIBUTING.md#132-espnet2-recipes" && \
     exit 1
-    log "Stage 16: Upload model to HuggingFace: ${hf_repo}"
+    log "Stage 15: Upload model to HuggingFace: ${hf_repo}"
+
+    if [ ! -f "${packed_model}" ]; then
+        log "ERROR: ${packed_model} does not exist. Please run stage 14 first."
+        exit 1
+    fi
 
     gitlfs=$(git lfs --version 2> /dev/null || true)
     [ -z "${gitlfs}" ] && \

@@ -3,7 +3,7 @@ from typing import Callable, Collection, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
-from typeguard import check_argument_types, check_return_type
+from typeguard import typechecked
 
 from espnet2.enh.espnet_model_tse import ESPnetExtractionModel
 from espnet2.enh.extractor.abs_extractor import AbsExtractor
@@ -211,6 +211,44 @@ class TargetSpeakerExtractionTask(AbsTask):
             default=False,
             help="Whether to force all data to be single-channel.",
         )
+        group.add_argument(
+            "--channel_reordering",
+            type=str2bool,
+            default=False,
+            help="Whether to randomly reorder the channels of the "
+            "multi-channel signals.",
+        )
+        group.add_argument(
+            "--categories",
+            nargs="+",
+            default=[],
+            type=str,
+            help="The set of all possible categories in the dataset. Used to add the "
+            "category information to each sample",
+        )
+        group.add_argument(
+            "--speech_segment",
+            type=int_or_none,
+            default=None,
+            help="Truncate the audios (except for the enrollment) to the specified "
+            "length if not None",
+        )
+        group.add_argument(
+            "--avoid_allzero_segment",
+            type=str2bool,
+            default=True,
+            help="Only used when --speech_segment is specified. If True, make sure "
+            "all truncated segments are not all-zero",
+        )
+        group.add_argument(
+            "--flexible_numspk",
+            type=str2bool,
+            default=False,
+            help="Whether to load variable numbers of speakers in each sample. "
+            "In this case, only the first-speaker files such as 'spk1.scp' and "
+            "'dereverb1.scp' are used, which are expected to have multiple columns. "
+            "Other numbered files such as 'spk2.scp' and 'dereverb2.scp' are ignored.",
+        )
 
         for class_choices in cls.class_choices_list:
             # Append --<name> and --<name>_conf.
@@ -218,58 +256,45 @@ class TargetSpeakerExtractionTask(AbsTask):
             class_choices.add_arguments(group)
 
     @classmethod
-    def build_collate_fn(
-        cls, args: argparse.Namespace, train: bool
-    ) -> Callable[
+    @typechecked
+    def build_collate_fn(cls, args: argparse.Namespace, train: bool) -> Callable[
         [Collection[Tuple[str, Dict[str, np.ndarray]]]],
         Tuple[List[str], Dict[str, torch.Tensor]],
     ]:
-        assert check_argument_types()
 
         return CommonCollateFn(float_pad_value=0.0, int_pad_value=0)
 
     @classmethod
+    @typechecked
     def build_preprocess_fn(
         cls, args: argparse.Namespace, train: bool
     ) -> Optional[Callable[[str, Dict[str, np.array]], Dict[str, np.ndarray]]]:
-        assert check_argument_types()
-        retval = TSEPreprocessor(
-            train=train,
+        kwargs = dict(
             train_spk2enroll=args.train_spk2enroll,
             enroll_segment=getattr(args, "enroll_segment", None),
             load_spk_embedding=getattr(args, "load_spk_embedding", False),
             load_all_speakers=getattr(args, "load_all_speakers", False),
             # inherited from EnhPreprocessor
-            rir_scp=args.rir_scp if hasattr(args, "rir_scp") else None,
-            rir_apply_prob=args.rir_apply_prob
-            if hasattr(args, "rir_apply_prob")
-            else 1.0,
-            noise_scp=args.noise_scp if hasattr(args, "noise_scp") else None,
-            noise_apply_prob=args.noise_apply_prob
-            if hasattr(args, "noise_apply_prob")
-            else 1.0,
-            noise_db_range=args.noise_db_range
-            if hasattr(args, "noise_db_range")
-            else "13_15",
-            short_noise_thres=args.short_noise_thres
-            if hasattr(args, "short_noise_thres")
-            else 0.5,
-            speech_volume_normalize=args.speech_volume_normalize
-            if hasattr(args, "speech_volume_normalize")
-            else None,
-            use_reverberant_ref=args.use_reverberant_ref
-            if hasattr(args, "use_reverberant_ref")
-            else None,
-            num_spk=args.num_spk if hasattr(args, "num_spk") else 1,
-            num_noise_type=args.num_noise_type
-            if hasattr(args, "num_noise_type")
-            else 1,
-            sample_rate=args.sample_rate if hasattr(args, "sample_rate") else 8000,
-            force_single_channel=args.force_single_channel
-            if hasattr(args, "force_single_channel")
-            else False,
+            rir_scp=getattr(args, "rir_scp", None),
+            rir_apply_prob=getattr(args, "rir_apply_prob", 1.0),
+            noise_scp=getattr(args, "noise_scp", None),
+            noise_apply_prob=getattr(args, "noise_apply_prob", 1.0),
+            noise_db_range=getattr(args, "noise_db_range", "13_15"),
+            short_noise_thres=getattr(args, "short_noise_thres", 0.5),
+            speech_volume_normalize=getattr(args, "speech_volume_normalize", None),
+            use_reverberant_ref=getattr(args, "use_reverberant_ref", None),
+            num_spk=getattr(args, "num_spk", 1),
+            num_noise_type=getattr(args, "num_noise_type", 1),
+            sample_rate=getattr(args, "sample_rate", 8000),
+            force_single_channel=getattr(args, "force_single_channel", False),
+            channel_reordering=getattr(args, "channel_reordering", False),
+            categories=getattr(args, "categories", None),
+            speech_segment=getattr(args, "speech_segment", None),
+            avoid_allzero_segment=getattr(args, "avoid_allzero_segment", True),
+            flexible_numspk=getattr(args, "flexible_numspk", False),
         )
-        assert check_return_type(retval)
+        kwargs.update(args.preprocessor_conf)
+        retval = TSEPreprocessor(train=train, **kwargs)
         return retval
 
     @classmethod
@@ -296,13 +321,13 @@ class TargetSpeakerExtractionTask(AbsTask):
             retval += [
                 "speech_ref{}".format(n) for n in range(1, MAX_REFERENCE_NUM + 1)
             ]
+        retval += ["category"]
         retval = tuple(retval)
-        assert check_return_type(retval)
         return retval
 
     @classmethod
+    @typechecked
     def build_model(cls, args: argparse.Namespace) -> ESPnetExtractionModel:
-        assert check_argument_types()
 
         encoder = encoder_choices.get_class(args.encoder)(**args.encoder_conf)
         extractor = extractor_choices.get_class(args.extractor)(
@@ -337,5 +362,4 @@ class TargetSpeakerExtractionTask(AbsTask):
         if args.init is not None:
             initialize(model, args.init)
 
-        assert check_return_type(model)
         return model

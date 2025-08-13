@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import yaml
 from tqdm import trange
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.enh.loss.criterions.tf_domain import FrequencyDomainMSE
 from espnet2.enh.loss.criterions.time_domain import SISNRLoss
@@ -93,11 +93,12 @@ class SeparateSpeech:
 
     """
 
+    @typechecked
     def __init__(
         self,
-        train_config: Union[Path, str] = None,
-        model_file: Union[Path, str] = None,
-        inference_config: Union[Path, str] = None,
+        train_config: Union[Path, str, None] = None,
+        model_file: Union[Path, str, None] = None,
+        inference_config: Union[Path, str, None] = None,
         segment_size: Optional[float] = None,
         hop_size: Optional[float] = None,
         normalize_segment_scale: bool = False,
@@ -107,7 +108,6 @@ class SeparateSpeech:
         device: str = "cpu",
         dtype: str = "float32",
     ):
-        assert check_argument_types()
 
         # 1. Build Enh model
         if inference_config is None:
@@ -180,9 +180,10 @@ class SeparateSpeech:
             logging.info("Perform direct speech %s on the input" % task)
 
     @torch.no_grad()
+    @typechecked
     def __call__(
         self, speech_mix: Union[torch.Tensor, np.ndarray], fs: int = 8000, **kwargs
-    ) -> List[torch.Tensor]:
+    ) -> List[Union[torch.Tensor, np.array]]:
         """Inference
 
         Args:
@@ -195,7 +196,6 @@ class SeparateSpeech:
             [separated_audio1, separated_audio2, ...]
 
         """
-        assert check_argument_types()
 
         enroll_ref = [
             # (Batch, samples_aux)
@@ -222,7 +222,7 @@ class SeparateSpeech:
 
         # a. To device
         speech_mix = to_device(speech_mix, device=self.device)
-        lengths = to_device(lengths, device=self.device)
+        enroll_ref = to_device(enroll_ref, device=self.device)
         if self.enh_model.share_encoder:
             feats_aux, flens_aux = zip(
                 *[
@@ -415,6 +415,7 @@ def humanfriendly_or_none(value: str):
     return humanfriendly.parse_size(value)
 
 
+@typechecked
 def inference(
     output_dir: str,
     batch_size: int,
@@ -436,9 +437,9 @@ def inference(
     normalize_segment_scale: bool,
     show_progressbar: bool,
     ref_channel: Optional[int],
+    output_format: str,
     normalize_output_wav: bool,
 ):
-    assert check_argument_types()
     if batch_size > 1:
         raise NotImplementedError("batch decoding is not implemented")
     if ngpu > 1:
@@ -490,13 +491,34 @@ def inference(
         allow_variable_data_keys=allow_variable_data_keys,
         inference=True,
     )
+    variable_names = [
+        name
+        for path, name, typ in loader.dataset.path_name_type_list
+        if name.startswith("enroll_ref")
+    ]
+    num_spk = len(variable_names)
+    if train_config is None:
+        train_config = Path(model_file).parent / "config.yaml"
+    if num_spk != separate_speech.num_spk:
+        raise RuntimeError(
+            f"Number of speakers in the model ({separate_speech.num_spk}) "
+            "and the number of speakers provided by --data_path_and_name_and_type "
+            f"({num_spk}) do not match.\nTwo solutions:\n"
+            f"  1. Set model_conf.num_spk in {train_config} manually to {num_spk}.\n"
+            "  2. Reduce the number of speakers in --data_path_and_name_and_type to "
+            f"{separate_speech.num_spk}."
+        )
 
     # 4. Start for-loop
-    output_dir = Path(output_dir).expanduser().resolve()
+    output_dir: Path = Path(output_dir).expanduser().resolve()
     writers = []
     for i in range(separate_speech.num_spk):
         writers.append(
-            SoundScpWriter(f"{output_dir}/wavs/{i + 1}", f"{output_dir}/spk{i + 1}.scp")
+            SoundScpWriter(
+                f"{output_dir}/wavs/{i + 1}",
+                f"{output_dir}/spk{i + 1}.scp",
+                format=output_format,
+            )
         )
 
     for i, (keys, batch) in enumerate(loader):
@@ -572,6 +594,12 @@ def get_parser():
         type=str2bool,
         default=False,
         help="Whether to normalize the predicted wav to [-1~1]",
+    )
+    group.add_argument(
+        "--output_format",
+        type=str,
+        default="wav",
+        help="Output format for the separated speech",
     )
 
     group = parser.add_argument_group("The model configuration related")

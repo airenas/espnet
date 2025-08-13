@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet2.asr.specaug.specaug import SpecAug
@@ -15,12 +15,13 @@ class OpenAIWhisperEncoder(AbsEncoder):
     URL: https://github.com/openai/whisper
     """
 
+    @typechecked
     def __init__(
         self,
         input_size: int = 1,
         dropout_rate: float = 0.0,
         whisper_model: str = "small",
-        download_dir: str = None,
+        download_dir: Optional[str] = None,
         use_specaug: bool = False,
         specaug_conf: Union[dict, None] = None,
         do_pad_trim: bool = False,
@@ -36,7 +37,6 @@ class OpenAIWhisperEncoder(AbsEncoder):
             )
             raise e
 
-        assert check_argument_types()
         super().__init__()
 
         self.n_fft = N_FFT
@@ -50,7 +50,9 @@ class OpenAIWhisperEncoder(AbsEncoder):
         self.dropout = torch.nn.Dropout(dropout_rate)
 
         assert whisper_model in whisper.available_models()
-        _model = whisper.load_model(whisper_model, download_root=download_dir)
+        _model = whisper.load_model(
+            whisper_model, download_root=download_dir, device="cpu"
+        )
         self.encoders = copy.deepcopy(_model.encoder)
         self.encoders.train()
 

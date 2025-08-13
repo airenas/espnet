@@ -1,3 +1,5 @@
+"""Frontend module."""
+
 from typing import List, Optional, Tuple, Union
 
 import numpy
@@ -5,11 +7,13 @@ import torch
 import torch.nn as nn
 from torch_complex.tensor import ComplexTensor
 
-from espnet.nets.pytorch_backend.frontends.dnn_beamformer import DNN_Beamformer
-from espnet.nets.pytorch_backend.frontends.dnn_wpe import DNN_WPE
+from espnet2.enh.layers.dnn_beamformer import DNN_Beamformer
+from espnet2.enh.layers.dnn_wpe import DNN_WPE
 
 
 class Frontend(nn.Module):
+    """Frontend class."""
+
     def __init__(
         self,
         idim: int,
@@ -34,6 +38,7 @@ class Frontend(nn.Module):
         ref_channel: int = -1,
         bdropout_rate=0.0,
     ):
+        """Initialize frontend."""
         super().__init__()
 
         self.use_beamformer = use_beamformer
@@ -74,7 +79,8 @@ class Frontend(nn.Module):
                 bunits=bunits,
                 bprojs=bprojs,
                 blayers=blayers,
-                bnmask=bnmask,
+                num_spk=max(bnmask - 1, 1),
+                use_noise_mask=(bnmask > 1),
                 dropout_rate=bdropout_rate,
                 badim=badim,
                 ref_channel=ref_channel,
@@ -85,6 +91,7 @@ class Frontend(nn.Module):
     def forward(
         self, x: ComplexTensor, ilens: Union[torch.LongTensor, numpy.ndarray, List[int]]
     ) -> Tuple[ComplexTensor, torch.LongTensor, Optional[ComplexTensor]]:
+        """Calculate frontend forward propagation."""
         assert len(x) == len(ilens), (len(x), len(ilens))
         # (B, T, F) or (B, T, C, F)
         if x.dim() not in (3, 4):
@@ -112,7 +119,7 @@ class Frontend(nn.Module):
             # 1. WPE
             if use_wpe:
                 # h: (B, T, C, F) -> h: (B, T, C, F)
-                h, ilens, mask = self.wpe(h, ilens)
+                h, ilens, mask, power = self.wpe(h, ilens)
 
             # 2. Beamformer
             if use_beamformer:
@@ -123,6 +130,7 @@ class Frontend(nn.Module):
 
 
 def frontend_for(args, idim):
+    """Instantiate an frontend module given the program arguments.."""
     return Frontend(
         idim=idim,
         # WPE options

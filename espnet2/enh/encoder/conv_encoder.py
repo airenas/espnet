@@ -1,5 +1,3 @@
-import math
-
 import torch
 
 from espnet2.enh.encoder.abs_encoder import AbsEncoder
@@ -27,12 +25,13 @@ class ConvEncoder(AbsEncoder):
     def output_dim(self) -> int:
         return self._output_dim
 
-    def forward(self, input: torch.Tensor, ilens: torch.Tensor):
+    def forward(self, input: torch.Tensor, ilens: torch.Tensor, fs: int = None):
         """Forward.
 
         Args:
             input (torch.Tensor): mixed speech [Batch, sample]
             ilens (torch.Tensor): input lengths [Batch]
+            fs (int): sampling rate in Hz (Not used)
         Returns:
             feature (torch.Tensor): mixed feature after encoder [Batch, flens, channel]
         """
@@ -44,7 +43,9 @@ class ConvEncoder(AbsEncoder):
         feature = torch.nn.functional.relu(feature)
         feature = feature.transpose(1, 2)
 
-        flens = (ilens - self.kernel_size) // self.stride + 1
+        flens = (
+            torch.div(ilens - self.kernel_size, self.stride, rounding_mode="trunc") + 1
+        )
 
         return feature, flens
 
@@ -53,7 +54,9 @@ class ConvEncoder(AbsEncoder):
         return output
 
     def streaming_frame(self, audio: torch.Tensor):
-        """streaming_frame. It splits the continuous audio into frame-level
+        """Stream frame.
+
+        It splits the continuous audio into frame-level
         audio chunks in the streaming *simulation*. It is noted that this
         function takes the entire long audio as input for a streaming simulation.
         You may refer to this function to manage your streaming input
@@ -79,7 +82,7 @@ class ConvEncoder(AbsEncoder):
 
 if __name__ == "__main__":
     input_audio = torch.randn((2, 100))
-    ilens = torch.LongTensor([100, 98])
+    ilens = torch.tensor([100, 98], dtype=torch.long)
 
     nfft = 32
     win_length = 28
