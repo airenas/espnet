@@ -618,6 +618,8 @@ class FastSpeech2(AbsTTS):
         lids: Optional[torch.Tensor] = None,
         is_inference: bool = False,
         alpha: float = 1.0,
+        pitch_postprocess_callback = None,
+        duration_postprocess_callback = None,
     ) -> Sequence[torch.Tensor]:
         # forward encoder
         x_masks = self._source_mask(ilens)
@@ -654,10 +656,15 @@ class FastSpeech2(AbsTTS):
 
         if is_inference:
             d_outs = self.duration_predictor.inference(hs, d_masks)  # (B, T_text)
+            if pitch_postprocess_callback is not None:
+                p_outs = pitch_postprocess_callback(p_outs)
             # use prediction in inference
             p_embs = self.pitch_embed(p_outs.transpose(1, 2)).transpose(1, 2)
             e_embs = self.energy_embed(e_outs.transpose(1, 2)).transpose(1, 2)
             hs = hs + e_embs + p_embs
+
+            if duration_postprocess_callback is not None:
+                d_outs = duration_postprocess_callback(d_outs)
             hs = self.length_regulator(hs, d_outs, alpha)  # (B, T_feats, adim)
         else:
             d_outs = self.duration_predictor(hs, d_masks)
@@ -708,6 +715,8 @@ class FastSpeech2(AbsTTS):
         energy: Optional[torch.Tensor] = None,
         alpha: float = 1.0,
         use_teacher_forcing: bool = False,
+        pitch_postprocess_callback = None,
+        duration_postprocess_callback = None,
     ) -> Dict[str, torch.Tensor]:
         """Generate the sequence of features given the sequences of characters.
 
@@ -723,6 +732,8 @@ class FastSpeech2(AbsTTS):
             alpha (float): Alpha to control the speed.
             use_teacher_forcing (bool): Whether to use teacher forcing.
                 If true, groundtruth of duration, pitch and energy will be used.
+            pitch_postprocess_callback (Optional[Callable]): Callback function to update pitch before embedding.
+            duration_postprocess_callback (Optional[Callable]): Callback function to update duration before length regulator.
 
         Returns:
             Dict[str, Tensor]: Output dict including the following items:
@@ -770,6 +781,8 @@ class FastSpeech2(AbsTTS):
                 lids=lids,
                 is_inference=True,
                 alpha=alpha,
+                pitch_postprocess_callback=pitch_postprocess_callback,
+                duration_postprocess_callback=duration_postprocess_callback,
             )  # (1, T_feats, odim)
 
         return dict(
