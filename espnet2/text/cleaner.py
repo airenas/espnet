@@ -76,6 +76,8 @@ class TextCleaner:
                 text = KoreanCleaner.normalize_text(text)
             elif "whisper" in t and self.whisper_cleaner is not None:
                 text = self.whisper_cleaner(text)
+            elif t == "lower":
+                text = text.casefold()    
             else:
                 raise RuntimeError(f"Not supported: type={t}")
 

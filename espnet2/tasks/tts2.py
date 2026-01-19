@@ -135,7 +135,7 @@ class TTS2Task(AbsTask):
         parser.add_argument(
             "--cleaner",
             type=str_or_none,
-            choices=[None, "tacotron", "jaconv", "vietnamese", "korean_cleaner"],
+            choices=[None, "tacotron", "jaconv", "vietnamese", "korean_cleaner", "lower"],
             default=None,
             help="Apply text cleaning",
         )

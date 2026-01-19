@@ -221,7 +221,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--cleaner",
         type=str_or_none,
-        choices=[None, "tacotron", "jaconv", "vietnamese"],
+        choices=[None, "tacotron", "jaconv", "vietnamese", "lower"],
         default=None,
         help="Apply text cleaning",
     )
