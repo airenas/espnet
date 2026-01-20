@@ -10,8 +10,9 @@ n_fft=1024
 n_shift=256
 f0min=65
 f0max=330
-cleaner=lower
-token_type=char
+cleaner=none
+token_type=phn
+g2p=espeak_ng_lt
 
 opts=
 if [ "${fs}" -eq 22050 ]; then
@@ -28,8 +29,6 @@ test_sets="dev eval1"
 train_config=conf/train.yaml
 inference_config=conf/decode.yaml
 
-# g2p=g2p_en # Include word separator
-g2p=g2p_en_no_space # Include no word separator
 
 ./tts.sh \
     --lang lt \

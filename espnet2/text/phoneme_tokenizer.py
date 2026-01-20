@@ -48,6 +48,7 @@ g2p_choices = [
     "korean_jaso",
     "korean_jaso_no_space",
     "g2p_is",
+    "espeak_ng_lt",
 ]
 
 
@@ -560,6 +561,17 @@ class PhonemeTokenizer(AbsTokenizer):
                 backend="espeak",
                 with_stress=True,
                 preserve_punctuation=True,
+            )
+        elif g2p_type == "espeak_ng_lt":
+            self.g2p = Phonemizer(
+                language="lt",
+                backend="espeak",
+                with_stress=True,
+                preserve_punctuation=True,
+                # strip=True,
+                word_separator=" ",
+                phone_separator="",
+                split_by_single_token=True,
             )
         elif g2p_type == "g2pk":
             self.g2p = G2pk(no_space=False)
