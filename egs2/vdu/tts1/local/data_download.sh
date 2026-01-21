@@ -21,9 +21,9 @@ if [ ! -e "${download_dir}/corpus" ]; then
     # wget http://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
     tar -vxf "${corpus_file}"
     mkdir -p "corpus/wavs"
-    cd "WAV96CHUNK_RS"
-    for f in *$'\226'*.wav; do
-        base="${f##*$'\226'}"
+    cd "WAV96CHUNK"
+    for f in *$'\223'*.wav; do
+        base="${f##*$'\223'}"
         mv "$f" "../corpus/wavs/$base"
     done
     cd "${cwd}/${download_dir}"
