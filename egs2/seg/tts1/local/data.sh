@@ -25,15 +25,17 @@ fi
 . ./cmd.sh || exit 1;
 . ./db.sh || exit 1;
 
-if [ -z "${VDU_CORPUS}" ]; then
-   log "Fill the value of 'VDU_CORPUS' of db.sh"
+if [ -z "${seg_corpus}" ]; then
+   log "Fill the env value of 'seg_corpus'"
    exit 1
 fi
-if [ -z "${VDU_CORPUS_FILE}" ]; then
-   log "Fill the value of 'VDU_CORPUS_FILE' of db.sh"
+if [ -z "${work_dir}" ]; then
+   log "Fill the env value of 'work_dir'"
    exit 1
 fi
-db_root=${VDU_CORPUS}
+db_root="$(realpath ${work_dir})/downloads"
+
+log "Starting work on: ${db_root}"
 
 train_set=tr_no_dev
 train_dev=dev
@@ -41,7 +43,7 @@ eval_set=eval1
 
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     log "stage -1: Data Download"
-    local/data_download.sh "${db_root}" "${VDU_CORPUS_FILE}"
+    local/data_download.sh "${db_root}" "${seg_corpus}"
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
@@ -76,6 +78,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         <(cut -d "|" -f 1 < ${db_root}/corpus/metadata.csv) \
         <(cut -d "|" -f 3 < ${db_root}/corpus/metadata.csv) \
         > ${text}
+    sort ${text} -o ${text}
 
     utils/validate_data_dir.sh --no-feats data/train
 fi

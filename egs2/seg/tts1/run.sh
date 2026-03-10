@@ -8,8 +8,6 @@ set -o pipefail
 fs=22050
 n_fft=1024
 n_shift=256
-f0min=65
-f0max=330
 cleaner=none
 token_type=phn
 g2p=espeak_ng_lt
@@ -28,7 +26,6 @@ test_sets="dev eval1"
 
 train_config=conf/train.yaml
 inference_config=conf/decode.yaml
-
 
 ./tts.sh \
     --lang lt \

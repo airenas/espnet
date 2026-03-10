@@ -1,7 +1,3 @@
-#!/usr/bin/env bash
-
-# Copyright 2019 Tomoki Hayashi
-#  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 download_dir=$1
 corpus_file=$2
@@ -15,20 +11,11 @@ fi
 set -euo pipefail
 
 cwd=$(pwd)
-if [ ! -e "${download_dir}/corpus" ]; then
-    mkdir -p "${download_dir}"
-    cd "${download_dir}"
-    # wget http://data.keithito.com/data/speech/LJSpeech-1.1.tar.bz2
-    tar -vxf "${corpus_file}"
-    mkdir -p "corpus/wavs"
-    cd "WAV96CHUNK"
-    for f in *$'\223'*.wav; do
-        base="${f##*$'\223'}"
-        mv "$f" "../corpus/wavs/$base"
-    done
-    cd "${cwd}/${download_dir}"
-    sed 's/^[^|]*–//' arn_transcripts.txt | sort > corpus/metadata.csv
+if [ ! -e "${download_dir}/corpus/.done" ]; then
+    mkdir -p "${download_dir}/corpus"
+    unzip "$corpus_file" -d ${download_dir}/corpus
     echo "successfully prepared data."
+    touch "${download_dir}/corpus/.done"
 else    
     echo "already exists. skipped."
 fi
