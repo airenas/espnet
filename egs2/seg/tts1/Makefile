@@ -42,6 +42,13 @@ $(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.done
 ######################################################################################
 # TRAINING
 ######################################################################################
+tacotron_params=--trans_type $(trans_type) \
+		--train_config conf/tuning/train_tacotron2.yaml
+$(work_dir)/.tacotron.done: $(work_dir)/.initial.prepare.done
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 7 $(tacotron_params)
+	touch $@
+train/tacotron: $(work_dir)/.tacotron.done
+.PHONY: train/tacotron
 
 train-all: $(work_dir)/.fs2.eval.done
 

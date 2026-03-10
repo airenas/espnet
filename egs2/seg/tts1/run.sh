@@ -24,9 +24,6 @@ train_set=tr_no_dev
 valid_set=dev
 test_sets="dev eval1"
 
-train_config=conf/train.yaml
-inference_config=conf/decode.yaml
-
 ./tts.sh \
     --lang lt \
     --feats_type raw \
@@ -36,8 +33,6 @@ inference_config=conf/decode.yaml
     --token_type "${token_type}" \
     --cleaner "${cleaner}" \
     --g2p "${g2p}" \
-    --train_config "${train_config}" \
-    --inference_config "${inference_config}" \
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
