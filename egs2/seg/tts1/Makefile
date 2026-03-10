@@ -11,6 +11,7 @@ test_count?=100
 inference_model?=train.loss.ave.pth
 f0min?=80
 f0max?=210
+dev_count?=250
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads $(work_dir):
@@ -21,7 +22,7 @@ $(work_dir)/downloads $(work_dir):
 info: 
 	@echo "f0min: $(f0min)"
 	@echo "f0max: $(f0max)"
-	@echo "seg_corpus: $(seg_corpus)"
+	@echo "corpus_file: $(corpus_file)"
 	@echo "work_dir: $(work_dir)"
 
 .PHONY: info

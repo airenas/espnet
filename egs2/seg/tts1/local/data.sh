@@ -25,8 +25,8 @@ fi
 . ./cmd.sh || exit 1;
 . ./db.sh || exit 1;
 
-if [ -z "${seg_corpus}" ]; then
-   log "Fill the env value of 'seg_corpus'"
+if [ -z "${corpus_file}" ]; then
+   log "Fill the env value of 'corpus_file'"
    exit 1
 fi
 if [ -z "${work_dir}" ]; then
@@ -43,20 +43,19 @@ eval_set=eval1
 
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ]; then
     log "stage -1: Data Download"
-    local/data_download.sh "${db_root}" "${seg_corpus}"
+    local/data_download.sh "${db_root}" "${corpus_file}"
 fi
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     log "stage 0: Data Preparation"
     # set filenames
-    scp=data/train/wav.scp
-    utt2spk=data/train/utt2spk
-    spk2utt=data/train/spk2utt
-    text=data/train/text
-    durations=data/train/durations
-
+    scp=${work_dir}/data/train/wav.scp
+    utt2spk=${work_dir}/data/train/utt2spk
+    spk2utt=${work_dir}/data/train/spk2utt
+    text=${work_dir}/data/train/text
+    durations=${work_dir}/data/train/durations
     # check file existence
-    [ ! -e data/train ] && mkdir -p data/train
+    [ ! -e ${work_dir}/data/train ] && mkdir -p ${work_dir}/data/train
     [ -e ${scp} ] && rm ${scp}
     [ -e ${utt2spk} ] && rm ${utt2spk}
     [ -e ${spk2utt} ] && rm ${spk2utt}
@@ -68,7 +67,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     find "${wavs_dir}" -name "*.wav" | sort | while read -r filename; do
         id=$(basename ${filename} | sed -e "s/\.[^\.]*$//g")
         echo "${id} ${filename}" >> ${scp}
-        echo "${id} ARN" >> ${utt2spk}
+        echo "${id} ${speaker}" >> ${utt2spk}
     done
     utils/utt2spk_to_spk2utt.pl ${utt2spk} > ${spk2utt}
 
@@ -80,17 +79,19 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         > ${text}
     sort ${text} -o ${text}
 
-    utils/validate_data_dir.sh --no-feats data/train
+    utils/validate_data_dir.sh --no-feats ${work_dir}/data/train
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     log "stage 1: utils/subset_data_dir.sh"
-    # make evaluation and devlopment sets
-    utils/subset_data_dir.sh --last data/train 500 data/deveval
-    utils/subset_data_dir.sh --last data/deveval 250 data/${eval_set}
-    utils/subset_data_dir.sh --first data/deveval 250 data/${train_dev}
-    n=$(( $(wc -l < data/train/wav.scp) - 500 ))
-    utils/subset_data_dir.sh --first data/train ${n} data/${train_set}
+    log "Making subsets for training and evaluation. ${dev_count} + ${dev_count} utterances are used for dev eval and the rest for training."
+    deveval_count=$((dev_count * 2))
+    # make evaluation and development sets
+    utils/subset_data_dir.sh --last ${work_dir}/data/train ${deveval_count} ${work_dir}/data/deveval
+    utils/subset_data_dir.sh --last ${work_dir}/data/deveval ${dev_count} ${work_dir}/data/${eval_set}
+    utils/subset_data_dir.sh --first ${work_dir}/data/deveval ${dev_count} ${work_dir}/data/${train_dev}
+    n=$(( $(wc -l < ${work_dir}/data/train/wav.scp) - ${deveval_count} ))
+    utils/subset_data_dir.sh --first ${work_dir}/data/train ${n} ${work_dir}/data/${train_set}
 fi
 
 log "Successfully finished. [elapsed=${SECONDS}s]"

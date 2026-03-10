@@ -38,8 +38,8 @@ num_nodes=1             # The number of nodes.
 nj=32                   # The number of parallel jobs.
 inference_nj=32         # The number of parallel jobs in decoding.
 gpu_inference=false     # Whether to perform gpu decoding.
-dumpdir=dump            # Directory to dump features.
-expdir=exp              # Directory to save experiments.
+dumpdir=${work_dir}/dump            # Directory to dump features.
+expdir=${work_dir}/exp              # Directory to save experiments.
 python=python3          # Specify python to execute espnet commands.
 
 # Data preparation related
@@ -270,12 +270,19 @@ if [ "${token_type}" = phn ]; then
 fi
 token_list="${token_listdir}/tokens.txt"
 
+data_dir="data"
+if [ -e "${work_dir}" ]; then
+    data_dir="${work_dir}/data"
+fi
+
+log "Data dir ${data_dir}."
+
 # Check old version token list dir existence
-if [ -e data/token_list ] && [ ! -e "${dumpdir}/token_list" ]; then
+if [ -e ${data_dir}/token_list ] && [ ! -e "${dumpdir}/token_list" ]; then
     log "Default token_list directory path is changed from data to ${dumpdir}."
     log "Copy data/token_list to ${dumpdir}/token_list for the compatibility."
     [ ! -e ${dumpdir} ] && mkdir -p ${dumpdir}
-    cp -a "data/token_list" "${dumpdir}/token_list"
+    cp -a "${data_dir}/token_list" "${dumpdir}/token_list"
 fi
 
 # Set tag for naming of model directory
@@ -333,7 +340,7 @@ fi
 
 if ! "${skip_data_prep}"; then
     if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-        log "Stage 1: Data preparation for data/${train_set}, data/${valid_set}, etc."
+        log "Stage 1: Data preparation for ${work_dir}/data/${train_set}, ${work_dir}/data/${valid_set}, etc."
         # [Task dependent] Need to create data.sh for new corpus
         local/data.sh ${local_data_opts}
     fi
@@ -349,24 +356,24 @@ if ! "${skip_data_prep}"; then
         # If nothing is need, then format_wav_scp.sh does nothing:
         # i.e. the input file format and rate is same as the output.
 
-        log "Stage 2: Format wav.scp: data/ -> ${data_feats}/"
+        log "Stage 2: Format wav.scp: ${data_dir}/ -> ${data_feats}/"
         for dset in "${train_set}" "${valid_set}" ${test_sets}; do
             if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
                 _suf="/org"
             else
                 _suf=""
             fi
-            utils/copy_data_dir.sh data/"${dset}" "${data_feats}${_suf}/${dset}"
+            utils/copy_data_dir.sh ${work_dir}/data/"${dset}" "${data_feats}${_suf}/${dset}"
             rm -f ${data_feats}${_suf}/${dset}/{segments,wav.scp,reco2file_and_channel}
             _opts=
-            if [ -e data/"${dset}"/segments ]; then
-                _opts+="--segments data/${dset}/segments "
+            if [ -e ${work_dir}/data/"${dset}"/segments ]; then
+                _opts+="--segments ${work_dir}/data/${dset}/segments "
             fi
 
             # shellcheck disable=SC2086
             scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
                 --audio-format "${audio_format}" --fs "${fs}" ${_opts} \
-                "data/${dset}/wav.scp" "${data_feats}${_suf}/${dset}"
+                "${work_dir}/data/${dset}/wav.scp" "${data_feats}${_suf}/${dset}"
             echo "${feats_type}" > "${data_feats}${_suf}/${dset}/feats_type"
         done
     fi
@@ -378,7 +385,7 @@ if ! "${skip_data_prep}"; then
 		log "${spk_embed_tag} will be set to 'xvector' for Kaldi extraction"
 		spk_embed_tag=xvector
 
-                log "Stage 3.1: Extract X-vector with Kaldi: data/ -> ${dumpdir}/${spk_embed_tag} (Require Kaldi)"
+                log "Stage 3.1: Extract X-vector with Kaldi: ${data_dir}/ -> ${dumpdir}/${spk_embed_tag} (Require Kaldi)"
                 # Download X-vector pretrained model
                 xvector_exp=${expdir}/xvector_nnet_1a
                 if [ ! -e "${xvector_exp}" ]; then
@@ -397,7 +404,7 @@ if ! "${skip_data_prep}"; then
                     else
                         _suf=""
                     fi
-                    # 1. Copy datadir and resample to 16k
+                    # 1. Copy ${data_dir}dir and resample to 16k
                     utils/copy_data_dir.sh "${data_feats}${_suf}/${dset}" "${dumpdir}/mfcc/${dset}"
                     utils/data/resample_data_dir.sh 16000 "${dumpdir}/mfcc/${dset}"
 
@@ -434,7 +441,7 @@ if ! "${skip_data_prep}"; then
                 done
             else
                 # Assume that others toolkits are python-based
-                log "Stage 3.1: Extract speaker embedding: data/ -> ${dumpdir}/${spk_embed_tag} using python toolkits"
+                log "Stage 3.1: Extract speaker embedding: ${data_dir}/ -> ${dumpdir}/${spk_embed_tag} using python toolkits"
 
                 if ${spk_embed_gpu_inference}; then
                     _cmd="${cuda_cmd}"
@@ -485,7 +492,7 @@ if ! "${skip_data_prep}"; then
 
         # Prepare spk id input
         if "${use_sid}"; then
-            log "Stage 3.2: Prepare speaker id: data/ -> ${data_feats}/"
+            log "Stage 3.2: Prepare speaker id: ${data_dir}/ -> ${data_feats}/"
             for dset in "${train_set}" "${valid_set}" ${test_sets}; do
                 if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
                     _suf="/org"
@@ -508,7 +515,7 @@ if ! "${skip_data_prep}"; then
 
         # Prepare lang id input
         if "${use_lid}"; then
-            log "Stage 3.3: Prepare lang id: data/ -> ${data_feats}/"
+            log "Stage 3.3: Prepare lang id: ${data_dir}/ -> ${data_feats}/"
             for dset in "${train_set}" "${valid_set}" ${test_sets}; do
                 if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
                     _suf="/org"
@@ -541,7 +548,7 @@ if ! "${skip_data_prep}"; then
 
 
     if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-        log "Stage 4: Remove long/short data: ${data_feats}/org -> ${data_feats}"
+        log "Stage 4: Remove long/short ${data_dir}: ${data_feats}/org -> ${data_feats}"
         # NOTE(kamo): Not applying to test_sets to keep original data
         for dset in "${train_set}" "${valid_set}"; do
             # Copy data dir

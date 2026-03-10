@@ -20,7 +20,7 @@ See the following pages before asking the question:
 - Sukurkite nustatymų failą, pvz. `Makefile.options`: 
 ```make
 ### garsyno failas
-seg_corpus?=corpus/AGN-1.0-sample.zip
+corpus_file?=corpus/AGN-1.0-sample.zip
 
 ### kalbėtojo duomenys
 ### pagrindinio tono rėžiai

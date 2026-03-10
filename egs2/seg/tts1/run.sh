@@ -41,6 +41,6 @@ inference_config=conf/decode.yaml
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --test_sets "${test_sets}" \
-    --srctexts "data/${train_set}/text" \
+    --srctexts "${work_dir}/data/${train_set}/text" \
     --f0min ${f0min} --f0max ${f0max} \
     ${opts} "$@"
