@@ -128,3 +128,5 @@ tools/condarc
 tools/lightning_constraints.txt
 tools/versa
 tools/ParallelWaveGAN
+egs2/seg/tts1/voc/exp/
+egs2/seg/tts1/exp/
