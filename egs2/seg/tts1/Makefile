@@ -49,6 +49,20 @@ $(work_dir)/.tacotron.done: $(work_dir)/.initial.prepare.done
 	touch $@
 train/tacotron: $(work_dir)/.tacotron.done
 .PHONY: train/tacotron
+######################################################################################
+# GET ALIGNMENTS
+######################################################################################
+tacotron_decode_params=--trans_type $(trans_type) \
+		--train_config conf/tuning/train_tacotron2.yaml \
+		--inference_config conf/decode.yaml \
+		--inference_model ${inference_model}
+		--inference_args "--use_teacher_forcing true" --test_sets "tr_no_dev dev eval1"
+$(work_dir)/.tacotron.decode.done: $(work_dir)/.tacotron.done
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 8 --stop-stage 8 $(tacotron_decode_params)
+	touch $@
+decode/tacotron: $(work_dir)/.tacotron.decode.done
+.PHONY: decode/tacotron
+######################################################################################
 
 train-all: $(work_dir)/.fs2.eval.done
 
