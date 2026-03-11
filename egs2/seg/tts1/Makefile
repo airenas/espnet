@@ -8,7 +8,7 @@ exp?=tts_train_raw_phn_none
 cuda?=0
 ngpu?=1
 test_count?=100
-inference_model?=train.loss.ave.pth
+inference_model?=train.loss.ave
 f0min?=80
 f0max?=210
 dev_count?=250
@@ -55,7 +55,7 @@ train/tacotron: $(work_dir)/.tacotron.done
 tacotron_decode_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_tacotron2.yaml \
 		--inference_config conf/decode.yaml \
-		--inference_model ${inference_model} \
+		--inference_model ${inference_model}.pth \
 		--inference_args "--use_teacher_forcing true" --test_sets "tr_no_dev dev eval1"
 $(work_dir)/.tacotron.decode.done: $(work_dir)/.tacotron.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 8 --stop-stage 8 $(tacotron_decode_params)
@@ -63,59 +63,24 @@ $(work_dir)/.tacotron.decode.done: $(work_dir)/.tacotron.done
 decode/tacotron: $(work_dir)/.tacotron.decode.done
 .PHONY: decode/tacotron
 ######################################################################################
-
-train-all: $(work_dir)/.fs2.eval.done
-
-
-fastspeech2_params=--trans_type $(trans_type) \
+######################################################################################
+# FINAL FASTSPEECH2 TRAINING
+######################################################################################
+fs2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
-    	--teacher_dumpdir $(work_dir)/duration \
-    	--tts_stats_dir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave/stats \
+    	--teacher_dumpdir $(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model} \
+    	--tts_stats_dir $(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model}/stats \
     	--write_collected_feats true
-
-$(work_dir)/duration/tr_no_dev:
-	mkdir -p $@
-$(work_dir)/duration/dev:
-	mkdir -p $@
-$(work_dir)/duration/eval1:
-	mkdir -p $@		
-
-$(work_dir)/duration/tr_no_dev/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/tr_no_dev
-	cat $(work_dir)/dump/raw/tr_no_dev/text | cut -d ' ' -f1 > $@.files
-	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
-
-$(work_dir)/duration/dev/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/dev
-	cat $(work_dir)/dump/raw/dev/text | cut -d ' ' -f1 > $@.files
-	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@	
-
-$(work_dir)/duration/eval1/durations: $(work_dir)/.initial.prepare.done | $(work_dir)/duration/eval1
-	cat $(work_dir)/dump/raw/eval1/text | cut -d ' ' -f1 > $@.files
-	grep -Ff $@.files $(work_dir)/downloads/$(corpus)/durations > $@
-
-$(work_dir)/.fs2.prepare.done: $(work_dir)/duration/tr_no_dev/durations $(work_dir)/duration/dev/durations $(work_dir)/duration/eval1/durations
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 5 $(fastspeech2_params)
+$(work_dir)/.fs2.done: $(work_dir)/.tacotron.decode.done
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 7 $(fs2_params)
 	touch $@
-
-$(work_dir)/.fs2.train.done: $(work_dir)/.fs2.prepare.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 6 $(fastspeech2_params)
-	touch $@
-
-$(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 7 --stop-stage 7 $(fastspeech2_params)
-	touch $@
-
-prepare-fs2: $(work_dir)/.fs2.prepare.done 
-train-fs2: $(work_dir)/.fs2.train.done
-eval-fs2: $(work_dir)/.fs2.eval.done
-pack-fastspeech2: 
-	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model} $(fastspeech2_params)
-
-train-one:
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
-#####################################################################################
-put-data:
-	$(SSH_CMD) "mkdir -p $(exp_dir)/downloads"
-	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
+train/fs2: $(work_dir)/.fs2.done
+.PHONY: train/fs2
+######################################################################################
+# PACK MODEL
+######################################################################################
+pack/fs2: $(work_dir)/.fs2.done
+	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model} $(fs2_params)
 #####################################################################################
 clean:
 	@echo -n "Are you sure you want to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
