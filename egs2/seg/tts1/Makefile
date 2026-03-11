@@ -6,7 +6,7 @@ trans_type?=phn
 ## of tacotron2
 inference_model?=train.loss.ave
 ## for packing fastspeech2
-final_inference_model?=train.loss.ave
+final_fs2_model?=train.loss.ave
 ## speakers specific parameters
 f0min?=80
 f0max?=210
@@ -80,10 +80,11 @@ train/fs2: $(work_dir)/.fs2.done
 ######################################################################################
 fs2_pack_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
-		--inference_model ${final_inference_model}.pth 
-    	
+		--skip_packing false \
+		--inference_model ${final_fs2_model}.pth 
 pack/fs2: $(work_dir)/.fs2.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
+.PHONY: pack/fs2
 #####################################################################################
 clean:
 	@echo -n "Are you sure you want to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
