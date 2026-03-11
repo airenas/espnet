@@ -2,17 +2,11 @@ cfg?=Makefile.options
 -include $(cfg)
 #####################################################################################
 work_dir?=v-01
-exp_dir=$(tts_dir)/espnet/egs2/laimis/tts1/$(work_dir)
 trans_type?=phn
-exp?=tts_train_raw_phn_none
-cuda?=0
-ngpu?=1
-test_count?=100
 inference_model?=train.loss.ave
 f0min?=80
 f0max?=210
 dev_count?=250
-# exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 $(work_dir)/downloads $(work_dir):
 	mkdir -p $@
@@ -45,7 +39,7 @@ $(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.done
 tacotron_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_tacotron2.yaml
 $(work_dir)/.tacotron.done: $(work_dir)/.initial.prepare.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 7 $(tacotron_params)
+	./run.sh --stage 5 --stop-stage 7 $(tacotron_params)
 	touch $@
 train/tacotron: $(work_dir)/.tacotron.done
 .PHONY: train/tacotron
@@ -58,7 +52,7 @@ tacotron_decode_params=--trans_type $(trans_type) \
 		--inference_model ${inference_model}.pth \
 		--inference_args "--use_teacher_forcing true" --test_sets "tr_no_dev dev eval1"
 $(work_dir)/.tacotron.decode.done: $(work_dir)/.tacotron.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 8 --stop-stage 8 $(tacotron_decode_params)
+	./run.sh --stage 8 --stop-stage 8 $(tacotron_decode_params)
 	touch $@
 decode/tacotron: $(work_dir)/.tacotron.decode.done
 .PHONY: decode/tacotron
@@ -72,7 +66,7 @@ fs2_params=--trans_type $(trans_type) \
     	--tts_stats_dir $(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model}/stats \
     	--write_collected_feats true
 $(work_dir)/.fs2.done: $(work_dir)/.tacotron.decode.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 5 --stop-stage 7 $(fs2_params)
+	./run.sh --stage 5 --stop-stage 7 $(fs2_params)
 	touch $@
 train/fs2: $(work_dir)/.fs2.done
 .PHONY: train/fs2
