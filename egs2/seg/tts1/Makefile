@@ -8,8 +8,8 @@ inference_model?=train.loss.ave
 ## for packing fastspeech2
 final_fs2_model?=train.loss.ave
 ## speakers specific parameters
-f0min?=80
-f0max?=210
+f0min?=70
+f0max?=500
 ## how many samples to use for dev set
 dev_count?=250
 #####################################################################################
@@ -23,7 +23,6 @@ info:
 	@echo "work_dir: 		$(work_dir)"
 	@echo "speaker: 		${speaker}"
 	@echo "dev_count: 		${dev_count}"
-	@echo "final_model: 	${final_model}"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
