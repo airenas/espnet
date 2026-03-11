@@ -3,9 +3,14 @@ cfg?=Makefile.options
 #####################################################################################
 work_dir?=v-01
 trans_type?=phn
+## of tacotron2
 inference_model?=train.loss.ave
+## for packing fastspeech2
+final_inference_model?=train.loss.ave
+## speakers specific parameters
 f0min?=80
 f0max?=210
+## how many samples to use for dev set
 dev_count?=250
 #####################################################################################
 $(work_dir)/downloads $(work_dir):
@@ -73,8 +78,12 @@ train/fs2: $(work_dir)/.fs2.done
 ######################################################################################
 # PACK MODEL
 ######################################################################################
+fs2_pack_params=--trans_type $(trans_type) \
+		--train_config conf/tuning/train_fastspeech2.yaml \
+		--inference_model ${final_inference_model}.pth 
+    	
 pack/fs2: $(work_dir)/.fs2.done
-	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model} $(fs2_params)
+	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 #####################################################################################
 clean:
 	@echo -n "Are you sure you want to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
