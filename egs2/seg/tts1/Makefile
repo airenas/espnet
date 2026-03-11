@@ -16,16 +16,24 @@ dev_count?=250
 $(work_dir)/downloads $(work_dir):
 	mkdir -p $@
 #####################################################################################
+info: 
+	@echo "f0min: 			$(f0min)"
+	@echo "f0max: 			$(f0max)"
+	@echo "corpus_file: 	$(corpus_file)"
+	@echo "work_dir: 		$(work_dir)"
+	@echo "speaker: 		${speaker}"
+	@echo "dev_count: 		${dev_count}"
+	@echo "final_model: 	${final_model}"
+	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
+	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
+	@echo "python: 			$$(python --version)"
+	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
+	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
+.PHONY: info
+######################################################################################
+#####################################################################################
 # DATA PREPARATION
 #####################################################################################
-info: 
-	@echo "f0min: $(f0min)"
-	@echo "f0max: $(f0max)"
-	@echo "corpus_file: $(corpus_file)"
-	@echo "work_dir: $(work_dir)"
-
-.PHONY: info
-
 prepare/corpus: info $(work_dir)/.corpus.done 
 .PHONY: prepare/corpus
 
@@ -62,7 +70,6 @@ $(work_dir)/.tacotron.decode.done: $(work_dir)/.tacotron.done
 decode/tacotron: $(work_dir)/.tacotron.decode.done
 .PHONY: decode/tacotron
 ######################################################################################
-######################################################################################
 # FINAL FASTSPEECH2 TRAINING
 ######################################################################################
 fs2_params=--trans_type $(trans_type) \
@@ -85,6 +92,9 @@ fs2_pack_params=--trans_type $(trans_type) \
 pack/fs2: $(work_dir)/.fs2.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 .PHONY: pack/fs2
+#####################################################################################		
+build: pack/fs2
+.PHONY: build
 #####################################################################################
 clean:
 	@echo -n "Are you sure you want to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
