@@ -1,39 +1,51 @@
 # SEG (Sintezės emocinis garsynas) skriptai
 
-This is the recipe of English single female speaker TTS model with [LJSpeech](https://keithito.com/LJ-Speech-Dataset/) corpus.
-
-See the following pages for the usage:
-- [How to run the recipe](../../TEMPLATE/tts1/README.md#how-to-run)
-- [How to train FastSpeech](../../TEMPLATE/tts1/README.md#fastspeech-training)
-- [How to train FastSpeech2](../../TEMPLATE/tts1/README.md#fastspeech2-training)
-- [How to train VITS](../../TEMPLATE/tts1/README.md#vits-training)
-- [How to train joint text2wav](../../TEMPLATE/tts1/README.md#joint-text2wav-training)
-
-See the following pages before asking the question:
-- [ESPnet2 Tutorial](https://espnet.github.io/espnet/espnet2_tutorial.html)
-- [ESPnet2 TTS FAQ](../../TEMPLATE/tts1/README.md#faq)
+This is the recipe of Lithuanian single speaker TTS model with SEG corpus.
 
 
-## Pasiruošimas
+### Preparation
 
-- Parsisiųskite kalbėtojo garsyną (pvz.: `AGN-1.0.zip`) 
-- Sukurkite nustatymų failą, pvz. `Makefile.options`: 
+1. Download corpus zip from: `...<pending>`.
+2. Prepare Makefile configuration file: `Makefile.options`:
+   Add:
+   1. full path to corpus file
+   2. speaker 
+   3. speaker f0 ranges
+   4. working dir for the experiment
+
+Sample:
 ```make
-### garsyno failas
-corpus_file?=corpus/AGN-1.0-sample.zip
-
-### kalbėtojo duomenys
-### pagrindinio tono rėžiai
-f0min?=65
-f0max?=330
-
-### darbo katalogas, kuriame bus saugomi mokymo duomenys, eksperimentai, paruošti modeliai
+corpus_file?=/home/user/dwn/corpus/AGN-1.0.zip
+speaker?=agn
+f0min?=150
+f0max?=625
 work_dir?=agn-01
 ```
 
-## Paruošiame duomenis mokinimui
+### Test configuration
+Run `make info`
+Expected output:
+```txt
+f0min: 			150
+f0max: 			625
+corpus_file: 	AGN-1.0.zip
+work_dir: 		agn-01
+speaker: 		agn
+dev_count: 		250
+nvidia-smi: 		NVIDIA RTX 4000 Ada Generation, 20475 MiB, 580.126.09
+cuda visible dev: 	
+python: 			Python 3.12.12
+torch: 			2.10.0+cu128
+cuda in python: 	12.8
+```
+Check that the corpus file and exp dir are correct. 
+Check that cuda in python displays a version.
+
+### Run model training
 ```bash
-make cfg=Makefile.options prepare/data
+make build
+## or in background
+nohup make build &
 ```
 
-
+A model will be trained and packed at: `${work_dir}/...`
