@@ -19,9 +19,10 @@ def main(args):
     word_pattern = re.compile(r"\w+", re.UNICODE)
 
     with open(file_path, newline="", encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="|")
-
-        for row in reader:
+        for line in f:
+            if not line:
+                continue
+            row =  line.split("|")
             if len(row) < 3:
                 logging.warning(f"skip {row}")
                 continue
@@ -39,9 +40,9 @@ def main(args):
     avg_words = total_words / total_records if total_records else 0
 
     print()
-    print(f"Įrašų iš viso           {total_records}")
-    print(f"Žodžių iš viso          {total_words}")
-    print(f"Simbolių iš viso        {total_chars}")
+    print(f"Įrašai           {total_records}")
+    print(f"Žodžiai          {total_words}")
+    print(f"Simboliai        {total_chars}")
     print(f"Kalbėtojai              1")
     print(f"Vidut. žodžių skaičius  {avg_words:.2f}")
     print(f"Skirtingų žodžių        {len(unique_words)}")
