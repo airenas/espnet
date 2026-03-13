@@ -14,7 +14,7 @@ Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
 
 ### Apie
 
-Ši repozitorija yra kopija iš: https://github.com/espnet/espnet. Repozitorija skirta įvairiems šnekos sintezės, atpažinimo, vertimo ir kitų kalbos technologijų uždavinių sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
+Ši repozitorija yra kopija (fork) iš: https://github.com/espnet/espnet. Repozitorija skirta įvairiems šnekos sintezės, atpažinimo, vertimo ir kitų kalbos technologijų uždavinių sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
 
 Šioje direktorijoje yra paruošti skriptai, kurie palengvina akustinio modelio, skirto šnekos sintezei, sukūrimą. Akustinis modelis generuoja mel-spektogramas iš teksto. Žemiau pateikta bendra šnekos sintezės schema ir šios repozitorijos paskirtis joje:
 
@@ -81,12 +81,15 @@ pip install phonemizer resampy
 ```
 
 Patikriname, ar GPU randamas sukurtoje python aplinkoje, ar tvarkyklė užkraunama:
+
 ```bash
 ### patikriname 
 cd egs2/seg/tts1
 make info
 ```
+
 Jei viskas gerai, turėtume matyti:
+
 ```txt
 ....
 cuda in python: 	12.x (arba 11.x)
@@ -134,7 +137,7 @@ cuda in python: 	12.x (arba 11.x)
 4. Mokome
    ```bash
    make build
-    ## arba, kad mokymas nenutrūktų uždarius terminalo langą
+   ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
     Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/` kataloge.
