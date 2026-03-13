@@ -2,6 +2,10 @@
 
 This is the recipe of Lithuanian single speaker TTS model with SEG corpus.
 
+Link to the SEG Corpus: *TBD*
+
+Detailed info in Lithuanian [README.lt](README.lt.md).
+
 
 ### Preparation
 
@@ -48,4 +52,4 @@ make build
 nohup make build &
 ```
 
-A model will be trained and packed at: `${work_dir}/...`
+A model will be trained and packed at: `${work_dir}/...`.

@@ -1,17 +1,20 @@
 # SEG (Sintezės emocinis garsynas) skriptai
 
+Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
+
 ### Turinys
 - [SEG (Sintezės emocinis garsynas) skriptai](#seg-sintezės-emocinis-garsynas-skriptai)
     - [Turinys](#turinys)
     - [Apie](#apie)
     - [Reikalavimai](#reikalavimai)
     - [Instaliavimas](#instaliavimas)
-    - [Mokinimas SEG](#mokinimas-seg)
-    - [Mokinimas su kitu garsynu](#mokinimas-su-kitu-garsynu)
+    - [Mokinimas](#mokinimas)
+      - [SE Garsynas](#se-garsynas)
+      - [Mokinimas su kitu garsynu](#mokinimas-su-kitu-garsynu)
 
 ### Apie
 
-Ši repositorija yra kopija iš: https://github.com/espnet/espnet. Repositorija skirta įvairiems šnekos sintezės, atpažinimo, vertimo ir kitoms kalbos technologijų problemoms spręsti. Pilna paketo informacija [čia](https://espnet.github.io/espnet/).
+Ši repozitorija yra kopija iš: https://github.com/espnet/espnet. Repozitorija skirta įvairiems šnekos sintezės, atpažinimo, vertimo ir kitų kalbos technologijų uždavinių sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
 
 Šioje direktorijoje yra paruošti skriptai, kurie palengvina akustinio modelio, skirto šnekos sintezei, sukūrimą. Akustinis modelis generuoja mel-spektogramas iš teksto. Žemiau pateikta bendra šnekos sintezės schema ir šios repozitorijos paskirtis joje:
 
@@ -32,10 +35,10 @@ flowchart LR
 ```
 
 Šioje repozitorijoje atlikti tokie pakeitimai:
-  1. Kodas pakoreguotas, kad būtų galima naudoto G2P (grapheme to phoneme) modelį lietuvių kalbai. Prijungta https://github.com/espeak-ng/espeak-ng biblioteka. Ši biblioteka neapima visų lietuvių kalbos ypatybių, bet kol kas yra vienintelis laisvai prieinamas G2P modelis lietuvių kalbai.
-  2. Paruošti skriptai, kurie automatizuoja, supaprastina FastSpeech2 akustinio modelio mokinimą paruošimą, pritainakant jį SE Garsynui.
+    1. Kodas pakoreguotas, kad būtų galima naudoti G2P (grapheme to phoneme) modelį lietuvių kalbai. Prijungta https://github.com/espeak-ng/espeak-ng biblioteka. Ši biblioteka neapima visų lietuvių kalbos ypatybių, bet kol kas yra vienintelis laisvai prieinamas G2P modelis lietuvių kalbai.
+    2. Paruošti skriptai, kurie automatizuoja ir supaprastina FastSpeech2 akustinio modelio paruošimą, pritaikant jį SE garsynui.
 
-FastSpeech2  modelio kūrimui reikalingas garsynas anuotuotas fonemų lygyje. Kadangi SEG neturi tokios anotacijos, tai mes pirmiausia apmokiname Tacotron2 Akustinį modelį. Tada juo naudodamiesi padarome duomenų anotavimą fonmų lygyje. Ir toliau jau mokiname galutinį FastSpeech2 modelį. Detali FastSpeech2 modelio mokinimo schema: 
+FastSpeech2 modelio kūrimui reikalingas garsynas, kuris būtų anotuotas fonemomis. Kadangi SEG neturi tokios anotacijos, pirmiausia apmokome Tacotron2 akustinį modelį. Tada, juo naudodamiesi, atliekame duomenų anotavimą fonemų lygiu. Toliau mokome galutinį FastSpeech2 modelį. Detali FastSpeech2 modelio mokymo schema:
 ```mermaid
 flowchart TD
     A(Garsynas, anotuotas sakinių lygyje) --> |duomenų paruošimas| B[Paruošti duomenys]
@@ -52,9 +55,9 @@ flowchart TD
 | | | |
 |-|-|-|
 | OS | Linux (Debian, Ubuntu) | Skriptai veikia Linux OS (išbandyta Ubuntu, Debian, bet turėtų veikti ir kitose distribucijose). Windows mašinoje galima mokinti naudojant WSL. |
-| RAM | >32Gb | |
-| HDD | >70Gb | |
-| GPU | >=10Gb | |
+| RAM | >32 GB | |
+| HDD | >70 GB | |
+| GPU | >=10 GB | |
 | CUDA | CUDA11 *arba* CUDA12 | |
 | Programos, bibliotekos | git, make, conda, libsndfile, espeak-ng | |
 
@@ -62,7 +65,8 @@ flowchart TD
 ### Instaliavimas
 
 ```bash
-## diegiame reikalingus įrankius bibliotekas
+## diegiame reikalingus įrankius ir bibliotekas
+## pvz Debian
 sudo apt install git make libsndfile-dev espeak-ng
 ### parsisiunčiame šią repozitoriją
 git clone https://github.com/airenas/espnet.git
@@ -70,13 +74,13 @@ cd espnet
 ### pasiruošiame python 3.12 aplinką
 conda create -n espnet python=3.12
 conda activate espnet
-### instaliuojame
+### instaliuojame espnet
 pip install -e .[tts] 
-### instaliuojame papidomas bibliotekas
+### instaliuojame papildomas bibliotekas
 pip install phonemizer resampy
 ```
 
-Patikriname ar GPU randamas sukurtoje python aplinkoje, ar driveris užkraunamas:
+Patikriname, ar GPU randamas sukurtoje python aplinkoje, ar tvarkyklė užkraunama:
 ```bash
 ### patikriname 
 cd egs2/seg/tts1
@@ -88,10 +92,12 @@ Jei viskas gerai, turėtume matyti:
 cuda in python: 	12.x (arba 11.x)
 ```
 
-### Mokinimas SEG
+### Mokinimas
 
-1. Parsisiunčiame garsyną zip formatu: *nuoroda bus pateikta...*.
-2. Pasiruošiame `make` konfigūracinį failą : `Makefile.options` šioje direktorijoje.
+#### SE Garsynas
+
+1. Parsisiunčiame garsyną vienam kalbėtojui zip formatu: *TBD*.
+2. Pasiruošiame `make` konfigūracinį failą `Makefile.options` šioje direktorijoje.
    
    Nurodome:
    1. kelią iki garsyno zip failo
@@ -110,8 +116,7 @@ cuda in python: 	12.x (arba 11.x)
     ### darbo katalogas
     work_dir?=agn-01
    ```
-3. Patikriname konfigūraciją
-   Vykdome komandą `make info`. Resultato pvz.:
+3. Patikriname konfigūraciją. Vykdome komandą `make info`. Rezultato pavyzdys:
    ```txt
     f0min: 			150 
     f0max: 			625
@@ -125,26 +130,42 @@ cuda in python: 	12.x (arba 11.x)
     torch: 			2.10.0+cu128
     cuda in python: 	12.8
    ```
-   Patikriname ar garsyno failas ir darbinė direktorija teisinga.
-   Patikriname ar GPU inicializuojamas teisingai python aplinkoje. `cuda in python: ` turi rodyti versijos numerį.
-4. Mokiname
+   Patikriname ar garsyno failas ir darbinė direktorija teisinga. Patikriname ar GPU inicializuojamas teisingai python aplinkoje. `cuda in python` turi rodyti versijos numerį.
+4. Mokome
    ```bash
    make build
-   ## arba 
+    ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
-   Modelis bus apmokintas, išsaugotas ir paruoštas `${work_dir}/` kataloge.
-   Mokinimo progresas matomas terminalo lange. Jei leidžiama su `nohup`, tada matomas `nohup.out` faile. Pvz.: `tail - f nohup.out`. 
+    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/` kataloge.
+    Mokymo progresas matomas terminalo lange. Jei paleidžiama su `nohup`, tada progresas matomas `nohup.out` faile. Pvz.: `tail -f nohup.out`.
 
-Preliminarūs mokinimo laikai su SE Garsyno vienu kalbėtoju (18h)
+Preliminarūs mokymo laikai su vienu SE garsyno kalbėtoju (18h)
 | GPU | Laikas |
 | -- | --- |
-| GeForce GTX 1080 Ti, 11178 MiB | apie 5 dienas |
-| NVIDIA RTX 4000 Ada Generation, 20475 MiB | apie 3,5 dienas  |
+| GeForce GTX 1080 Ti, 11178 MiB | apie 6 dienas |
+| NVIDIA RTX 4000 Ada Generation, 20475 MiB | apie 4 dienas  |
 
-### Mokinimas su kitu garsynu
+#### Mokinimas su kitu garsynu
 
-1. Padėkite audio failus `${work_dir}/downloads/corpus/wavs`. Failų formatas turi būti mono PCM WAV. Vienas sakinys turi būti viename faile.
-2. Padėkite transkripciją `${work_dir}/downloads/corpus/metadata.csv`. Trankripcijos formatas `Failo pavadinimas (be .wav iįplėtimo) wavs kataloge | Transkripcija (UTF-8) | Normalizuota (skačiai paversti žodžiais) transkripcija (UTF-8)`.
-3. Pažymėkite, kad garsynas paruoštas: `touch ${work_dir}/downloads/corpus/.done`
-4. Tęskite mokinimą kaip [Mokinimas SEG](#mokinimas-seg). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
+1. Patalpinkite audio failus `${work_dir}/downloads/corpus/wavs`. Failų formatas turi būti mono PCM WAV. Vienas sakinys turi būti viename faile.
+2. Paruoškite transkripcijos failą `${work_dir}/downloads/corpus/metadata.csv`. Transkripcijos failo formatas: kiekvienoje eilutėje 3 laukai, atskirti `|` simboliu. Laukų reikšmės: `Failo pavadinimas (be .wav išplėtimo) wavs kataloge | Transkripcija (UTF-8) | Normalizuota (skaičiai paversti žodžiais) transkripcija (UTF-8)`. Pvz.:
+```csv
+00007600-d7ba-41a5-bf11-6369fe31bbbe|Žmonės patirs nuoskriaudą.|Žmonės patirs nuoskriaudą.
+0000b912-b69e-4919-b581-e047aa60dd82|Pažvelk į mano planetą.|Pažvelk į mano planetą.
+00091cf8-3ed8-4400-9729-ed36aa25c692|Krūmai.|Krūmai.
+```
+3. Pažymėkite, kad garsynas paruoštas: `touch ${work_dir}/downloads/corpus/.done`. Garsyno katalogo struktūros pavyzdys:
+```tree
+wrk-01
+└── downloads
+    └── corpus
+        ├── .done
+        ├── metadata.csv
+        └── wavs
+            ├── 00007600-d7ba-41a5-bf11-6369fe31bbbe.wav
+            ├── 0000b912-b69e-4919-b581-e047aa60dd82.wav
+            ├── 00018c30-6e45-4039-b5d6-ab1de5ce861e.wav
+            ├──             ...
+```
+4. Tęskite mokymą kaip [SE Garsynas](#se-garsynas). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
