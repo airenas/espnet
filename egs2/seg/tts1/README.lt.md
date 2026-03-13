@@ -7,14 +7,14 @@ Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
     - [Turinys](#turinys)
     - [Apie](#apie)
     - [Reikalavimai](#reikalavimai)
-    - [Instaliavimas](#instaliavimas)
-    - [Mokinimas](#mokinimas)
+    - [ESPnet diegimas](#espnet-diegimas)
+    - [Mokymas](#mokymas)
       - [SE Garsynas](#se-garsynas)
-      - [Mokinimas su kitu garsynu](#mokinimas-su-kitu-garsynu)
+      - [Su kitu garsynu](#su-kitu-garsynu)
 
 ### Apie
 
-Ši repozitorija yra kopija (fork) iš: https://github.com/espnet/espnet. Repozitorija skirta įvairiems šnekos sintezės, atpažinimo, vertimo ir kitų kalbos technologijų uždavinių sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
+Ši repozitorija yra kopija (fork) iš: https://github.com/espnet/espnet. Repozitorija skirta įvairių kalbos technologijų uždavinių (šnekos sintezės, atpažinimo, vertimo ir kitų) sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
 
 Šioje direktorijoje yra paruošti skriptai, kurie palengvina akustinio modelio, skirto šnekos sintezei, sukūrimą. Akustinis modelis generuoja mel-spektogramas iš teksto. Žemiau pateikta bendra šnekos sintezės schema ir šios repozitorijos paskirtis joje:
 
@@ -35,7 +35,9 @@ flowchart LR
 ```
 
 Šioje repozitorijoje atlikti tokie pakeitimai:
+
     1. Kodas pakoreguotas, kad būtų galima naudoti G2P (grapheme to phoneme) modelį lietuvių kalbai. Prijungta https://github.com/espeak-ng/espeak-ng biblioteka. Ši biblioteka neapima visų lietuvių kalbos ypatybių, bet kol kas yra vienintelis laisvai prieinamas G2P modelis lietuvių kalbai.
+   
     2. Paruošti skriptai, kurie automatizuoja ir supaprastina FastSpeech2 akustinio modelio paruošimą, pritaikant jį SE garsynui.
 
 FastSpeech2 modelio kūrimui reikalingas garsynas, kuris būtų anotuotas fonemomis. Kadangi SEG neturi tokios anotacijos, pirmiausia apmokome Tacotron2 akustinį modelį. Tada, juo naudodamiesi, atliekame duomenų anotavimą fonemų lygiu. Toliau mokome galutinį FastSpeech2 modelį. Detali FastSpeech2 modelio mokymo schema:
@@ -62,7 +64,7 @@ flowchart TD
 | Programos, bibliotekos | git, make, conda, libsndfile, espeak-ng | |
 
 
-### Instaliavimas
+### ESPnet diegimas
 
 ```bash
 ## diegiame reikalingus įrankius ir bibliotekas
@@ -95,7 +97,7 @@ Jei viskas gerai, turėtume matyti:
 cuda in python: 	12.x (arba 11.x)
 ```
 
-### Mokinimas
+### Mokymas
 
 #### SE Garsynas
 
@@ -140,7 +142,7 @@ cuda in python: 	12.x (arba 11.x)
    ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
-    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/` kataloge.
+    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/ TBD` kataloge.
     Mokymo progresas matomas terminalo lange. Jei paleidžiama su `nohup`, tada progresas matomas `nohup.out` faile. Pvz.: `tail -f nohup.out`.
 
 Preliminarūs mokymo laikai su vienu SE garsyno kalbėtoju (18h)
@@ -149,7 +151,7 @@ Preliminarūs mokymo laikai su vienu SE garsyno kalbėtoju (18h)
 | GeForce GTX 1080 Ti, 11178 MiB | apie 6 dienas |
 | NVIDIA RTX 4000 Ada Generation, 20475 MiB | apie 4 dienas  |
 
-#### Mokinimas su kitu garsynu
+#### Su kitu garsynu
 
 1. Patalpinkite audio failus `${work_dir}/downloads/corpus/wavs`. Failų formatas turi būti mono PCM WAV. Vienas sakinys turi būti viename faile.
 2. Paruoškite transkripcijos failą `${work_dir}/downloads/corpus/metadata.csv`. Transkripcijos failo formatas: kiekvienoje eilutėje 3 laukai, atskirti `|` simboliu. Laukų reikšmės: `Failo pavadinimas (be .wav išplėtimo) wavs kataloge | Transkripcija (UTF-8) | Normalizuota (skaičiai paversti žodžiais) transkripcija (UTF-8)`. Pvz.:
