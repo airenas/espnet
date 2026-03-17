@@ -11,10 +11,10 @@ Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
     - [Mokymas](#mokymas)
       - [SE Garsynas](#se-garsynas)
       - [Su kitu garsynu](#su-kitu-garsynu)
-    - [Sintezavimas](#sintezavimas)
+    - [Sintezavimo demonstracija](#sintezavimo-demonstracija)
       - [Paruošti modeliai](#paruošti-modeliai)
       - [Lokaliame kompiuteryje](#lokaliame-kompiuteryje)
-        - [Sintežės paleidimas lokaliai](#sintežės-paleidimas-lokaliai)
+        - [Eiga](#eiga)
 
 ### Apie
 
@@ -182,7 +182,7 @@ wrk-01
 4. Tęskite mokymą kaip [SE Garsynas](#se-garsynas). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
 
 
-### Sintezavimas
+### Sintezavimo demonstracija
 
 Čia pateikiame pavyzdžius kaip naudojant ESPnet galima sintezuoti lietuvišką tekstą.
 
@@ -211,9 +211,9 @@ Sintezuoti galite naudodami šios repozitorijos kodą Python aplinkoje. Jums rei
    
 Pavyzdinis jupyter failas: [tts_jupyter_demo_local.ipynb](tts_jupyter_demo_local.ipynb). 
 
-##### Sintežės paleidimas lokaliai
+##### Eiga
 
-1. Sudiekite [ESPnet](#espnet-diegimas)
-2. Papildomai espnet conda aplinkoje įdiekite `pip install parallel_wavegan jupyter --no-build-isolation`
-3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  'tts_jupyter_demo_local.ipynb' naršyklėje.
+1. Sudiekite [ESPnet](#espnet-diegimas).
+2. Papildomai espnet conda aplinkoje įdiekite `pip install parallel_wavegan jupyter --no-build-isolation`.
+3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  'tts_jupyter_demo_local.ipynb' naršyklėje. Sekite instrukcijas jupyter faile.
    
