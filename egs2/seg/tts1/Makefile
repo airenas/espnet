@@ -90,6 +90,9 @@ fs2_pack_params=--trans_type $(trans_type) \
 		--inference_model ${final_fs2_model}.pth 
 pack/fs2: $(work_dir)/.fs2.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
+	# add missing files
+	zip -r $(work_dir)exp/tts_train_fastspeech2_raw_phn_espeak_ng_lt/tts_train_fastspeech2_raw_phn_espeak_ng_lt_${final_fs2_model}.zip \
+		$(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
 .PHONY: pack/fs2
 #####################################################################################		
 build: pack/fs2
