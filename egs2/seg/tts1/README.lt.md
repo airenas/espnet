@@ -195,7 +195,8 @@ Viešai prieinami akustiniai modeliai ir vokoderiai:
 4. Vokoderis - TBD
 
 Pavyzdinis sintezavimo jupyter failas: [tts_jupyter_demo.ipynb](tts_jupyter_demo.ipynb).
-Colab: TBD
+
+Demo internete: [![Atidaryti Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/airenas/espnet/blob/master/egs2/seg/tts1/tts_jupyter_demo.ipynb)
 
 #### Lokaliame kompiuteryje
 
