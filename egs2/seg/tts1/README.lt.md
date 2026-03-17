@@ -58,7 +58,12 @@ flowchart TD
     
 ```
 
+Turint Akustinį Modelį jau galima sintezuoti lietuvišką balsą naudojant suprogramuotą `Griffin-Lim` Vokoderį. Bet geresnė sintezuoto balso kokybė gaunama, kai Akustinis Modelis ir Vokoderis yra mokinami su to pačio kalbėtojo garsynais. Vokoderio mokinimo skriptai SEG garsymui yra [čia](https://github.com/airenas/ParallelWaveGAN/blob/master/egs/seg/voc1/README.lt.md).
+
+
 ### Reikalavimai
+
+Norint mokinti Akustinį Modelį:
 
 | | | |
 |-|-|-|
