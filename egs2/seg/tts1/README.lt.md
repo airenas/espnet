@@ -88,7 +88,7 @@ pip install -e .[tts]
 pip install phonemizer resampy
 ```
 
-Patikriname, ar GPU randamas sukurtoje python aplinkoje, ar tvarkyklė užkraunama:
+Patikriname, ar GPU randamas sukurtoje Python aplinkoje, ar tvarkyklė užkraunama:
 
 ```bash
 ### patikriname 
@@ -113,7 +113,7 @@ cuda in python: 	12.x (arba 11.x)
    Nurodome:
    1. kelią iki garsyno zip failo
    2. kalbėtoją. Pvz. nurodome kalbėtojo vardą, ar sutrumpinimą.
-   3. kalbėtojo pagrindinio tono rėžius. Juos nurodžius bus tiksliau nustatomas pagrindinis tonas. SE Garsyne ši informacija yra nurodyta README faile. Jei rėžių nežinote, nustatykite fmin=50, fmax=625.
+   3. kalbėtojo pagrindinio tono rėžius. Juos nurodžius bus tiksliau nustatomas pagrindinis tonas. SE Garsyne ši informacija yra nurodyta `<garsyno.zip>/README` faile. Jei rėžių nežinote, nustatykite `fmin=50`, `fmax=625`.
    4. darbinę direktoriją (work_dir). Joje bus saugomi tarpiniai duomenys ir galutinis modelis.
 
    `Makefile.options` pavyzdys:
@@ -216,5 +216,5 @@ Pavyzdinis jupyter failas: [tts_jupyter_demo_local.ipynb](tts_jupyter_demo_local
 
 1. Sudiekite [ESPnet](#espnet-diegimas).
 2. Papildomai espnet conda aplinkoje įdiekite `pip install parallel_wavegan jupyter --no-build-isolation`.
-3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  'tts_jupyter_demo_local.ipynb' naršyklėje. Sekite instrukcijas jupyter faile.
+3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  `tts_jupyter_demo_local.ipynb` naršyklėje. Sekite instrukcijas jupyter faile.
    
