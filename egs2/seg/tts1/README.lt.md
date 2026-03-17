@@ -11,10 +11,16 @@ Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
     - [Mokymas](#mokymas)
       - [SE Garsynas](#se-garsynas)
       - [Su kitu garsynu](#su-kitu-garsynu)
+    - [Sintezavimas](#sintezavimas)
+      - [Paruošti modeliai](#paruošti-modeliai)
+      - [Lokaliame kompiuteryje](#lokaliame-kompiuteryje)
+        - [Sintežės paleidimas lokaliai](#sintežės-paleidimas-lokaliai)
 
 ### Apie
 
 Ši repozitorija yra kopija (fork) iš: https://github.com/espnet/espnet. Repozitorija skirta įvairių kalbos technologijų uždavinių (šnekos sintezės, atpažinimo, vertimo ir kitų) sprendimui. Pilna paketo dokumentacija [čia](https://espnet.github.io/espnet/).
+
+Išbandyti lietuviškus sintezės balsus galite naudodami jau [paruoštus modelius](#paruošti-modeliai)
 
 Šioje direktorijoje yra paruošti skriptai, kurie palengvina akustinio modelio, skirto šnekos sintezei, sukūrimą. Akustinis modelis generuoja mel-spektogramas iš teksto. Žemiau pateikta bendra šnekos sintezės schema ir šios repozitorijos paskirtis joje:
 
@@ -61,7 +67,7 @@ flowchart TD
 | HDD | >70 GB | |
 | GPU | >=10 GB | |
 | CUDA | CUDA11 *arba* CUDA12 | |
-| Programos, bibliotekos | git, make, conda, libsndfile, espeak-ng | |
+| Programos, bibliotekos | git, make, conda, libsndfile, espeak-ng, zip | |
 
 
 ### ESPnet diegimas
@@ -69,7 +75,7 @@ flowchart TD
 ```bash
 ## diegiame reikalingus įrankius ir bibliotekas
 ## pvz Debian
-sudo apt install git make libsndfile-dev espeak-ng
+sudo apt install git make libsndfile-dev espeak-ng zip
 ### parsisiunčiame šią repozitoriją
 git clone https://github.com/airenas/espnet.git
 cd espnet
@@ -142,7 +148,7 @@ cuda in python: 	12.x (arba 11.x)
    ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
-    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/ TBD` kataloge.
+    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/ exp/tts_train_fastspeech2_raw_phn_espeak_ng_lt/tts_train_fastspeech2_raw_phn_espeak_ng_lt_train.loss.ave.zip` kataloge.
     Mokymo progresas matomas terminalo lange. Jei paleidžiama su `nohup`, tada progresas matomas `nohup.out` faile. Pvz.: `tail -f nohup.out`.
 
 Preliminarūs mokymo laikai su vienu SE garsyno kalbėtoju (18h)
@@ -174,3 +180,40 @@ wrk-01
             ├──             ...
 ```
 4. Tęskite mokymą kaip [SE Garsynas](#se-garsynas). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
+
+
+### Sintezavimas
+
+Čia pateikiame pavyzdžius kaip naudojant ESPnet galima sintezuoti lietuvišką tekstą.
+
+#### Paruošti modeliai
+
+Viešai prieinami akustiniai modeliai ir vokoderiai:
+1. AM - TBD
+2. AM - TBD
+3. Vokoderis - TBD
+4. Vokoderis - TBD
+
+Pavyzdinis sintezavimo jupyter failas: [tts_jupyter_demo.ipynb](tts_jupyter_demo.ipynb).
+Colab: TBD
+
+#### Lokaliame kompiuteryje
+
+Sintezuoti galite naudodami šios repozitorijos kodą Python aplinkoje. Jums reikės:
+
+1. Akustinio modelio. Jį galite:    
+   1.  mokinti [SE Garsynas](#se-garsynas) 
+   2.  arba atsisiųsti iš [Paruošti modeliai](#paruošti-modeliai).
+2. Vokoderio. Galite naudoti:
+   1. suprogramuotą Griffin-Lim - prastesnė garso kokybė
+   2. mokinti [TBD](TBD) - aukšta garso kokybė
+   3. atsisisiųsti iš [Paruošti modeliai](#paruošti-modeliai)  - aukšta garso kokybė.
+   
+Pavyzdinis jupyter failas: [tts_jupyter_demo_local.ipynb](tts_jupyter_demo_local.ipynb). 
+
+##### Sintežės paleidimas lokaliai
+
+1. Sudiekite [ESPnet](#espnet-diegimas)
+2. Papildomai espnet conda aplinkoje įdiekite `pip install parallel_wavegan jupyter --no-build-isolation`
+3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  'tts_jupyter_demo_local.ipynb' naršyklėje.
+   
