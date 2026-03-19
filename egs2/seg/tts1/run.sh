@@ -8,9 +8,13 @@ set -o pipefail
 fs=22050
 n_fft=1024
 n_shift=256
-cleaner=none
-token_type=phn
-g2p=espeak_ng_lt
+
+# cleaner=none
+# token_type=phn
+# g2p=espeak_ng_lt
+
+# cleaner=lower
+# token_type=char
 
 opts=
 if [ "${fs}" -eq 22050 ]; then

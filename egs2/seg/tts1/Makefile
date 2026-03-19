@@ -2,7 +2,11 @@ cfg?=Makefile.options
 -include $(cfg)
 #####################################################################################
 work_dir?=v-01
-trans_type?=phn
+
+cleaner?=none
+token_type?=phn
+g2p?=espeak_ng_lt
+
 ## of tacotron2
 inference_model?=train.loss.ave
 ## for packing fastspeech2
@@ -23,13 +27,28 @@ info:
 	@echo "work_dir: 		$(work_dir)"
 	@echo "speaker: 		${speaker}"
 	@echo "dev_count: 		${dev_count}"
+	@echo "cleaner: 		${cleaner}"
+	@echo "token_type: 		${token_type}"
+	@echo "g2p: 			${g2p}"
+	@echo "exp_suffix: 		${exp_suffix}"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
 	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
 	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
 .PHONY: info
-######################################################################################
+#####################################################################################
+ifeq ($(token_type),phn)
+exp_phn_suffix=$(token_type)_$(g2p)
+else
+exp_phn_suffix=$(token_type)
+endif
+ifeq ($(cleaner),none)
+exp_cleaner_suffix=
+else
+exp_cleaner_suffix=_$(cleaner)
+endif
+exp_suffix=$(exp_phn_suffix)$(exp_cleaner_suffix)
 #####################################################################################
 # DATA PREPARATION
 #####################################################################################
@@ -48,7 +67,7 @@ $(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.done
 ######################################################################################
 # TRAINING
 ######################################################################################
-tacotron_params=--trans_type $(trans_type) \
+tacotron_params=--trans_type $(token_type) \
 		--train_config conf/tuning/train_tacotron2.yaml
 $(work_dir)/.tacotron.done: $(work_dir)/.initial.prepare.done
 	./run.sh --stage 5 --stop-stage 7 $(tacotron_params)
@@ -58,7 +77,7 @@ train/tacotron: $(work_dir)/.tacotron.done
 ######################################################################################
 # GET ALIGNMENTS
 ######################################################################################
-tacotron_decode_params=--trans_type $(trans_type) \
+tacotron_decode_params=--trans_type $(token_type) \
 		--train_config conf/tuning/train_tacotron2.yaml \
 		--inference_config conf/decode.yaml \
 		--inference_model ${inference_model}.pth \
@@ -71,10 +90,10 @@ decode/tacotron: $(work_dir)/.tacotron.decode.done
 ######################################################################################
 # FINAL FASTSPEECH2 TRAINING
 ######################################################################################
-fs2_params=--trans_type $(trans_type) \
+fs2_params=--trans_type $(token_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
-    	--teacher_dumpdir $(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model} \
-    	--tts_stats_dir $(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model}/stats \
+    	--teacher_dumpdir $(work_dir)/exp/tts_train_tacotron2_raw_$(exp_suffix)/decode_use_teacher_forcingtrue_${inference_model} \
+    	--tts_stats_dir $(work_dir)/exp/tts_train_tacotron2_raw_$(exp_suffix)/decode_use_teacher_forcingtrue_${inference_model}/stats \
     	--write_collected_feats true
 $(work_dir)/.fs2.done: $(work_dir)/.tacotron.decode.done
 	./run.sh --stage 5 --stop-stage 7 $(fs2_params)
@@ -84,15 +103,15 @@ train/fs2: $(work_dir)/.fs2.done
 ######################################################################################
 # PACK MODEL
 ######################################################################################
-fs2_pack_params=--trans_type $(trans_type) \
+fs2_pack_params=--trans_type $(token_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
 		--skip_packing false \
 		--inference_model ${final_fs2_model}.pth 
 pack/fs2: $(work_dir)/.fs2.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 	# add missing files
-	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_phn_espeak_ng_lt/tts_train_fastspeech2_raw_phn_espeak_ng_lt_${final_fs2_model}.zip \
-		$(work_dir)/exp/tts_train_tacotron2_raw_phn_espeak_ng_lt/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
+	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_$(exp_suffix)/tts_train_fastspeech2_raw_$(exp_suffix)_${final_fs2_model}.zip \
+		$(work_dir)/exp/tts_train_tacotron2_raw_$(exp_suffix)/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
 .PHONY: pack/fs2
 #####################################################################################		
 build: pack/fs2
