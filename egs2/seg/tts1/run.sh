@@ -9,8 +9,8 @@ fs=22050
 n_fft=1024
 n_shift=256
 
-# cleaner=none
-# token_type=phn
+cleaner=${cleaner}
+token_type=${token_type}
 # g2p=espeak_ng_lt
 
 # cleaner=lower
