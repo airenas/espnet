@@ -16,6 +16,7 @@ f0min?=70
 f0max?=500
 ## how many samples to use for dev set
 dev_count?=250
+trans_type=$(token_type)
 #####################################################################################
 $(work_dir)/downloads $(work_dir):
 	mkdir -p $@
