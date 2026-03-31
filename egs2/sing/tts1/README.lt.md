@@ -1,15 +1,15 @@
-# SEG (Sintezės emocinis garsynas) skriptai
+# SINtezės Garsynas skriptai
 
 Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
 
 ### Turinys
-- [SEG (Sintezės emocinis garsynas) skriptai](#seg-sintezės-emocinis-garsynas-skriptai)
+- [SINtezės Garsynas skriptai](#sintezės-garsynas-skriptai)
     - [Turinys](#turinys)
     - [Apie](#apie)
     - [Reikalavimai](#reikalavimai)
     - [ESPnet diegimas](#espnet-diegimas)
     - [Mokymas](#mokymas)
-      - [SE Garsynas](#se-garsynas)
+      - [SING](#sing)
       - [Su kitu garsynu](#su-kitu-garsynu)
     - [Sintezavimo demonstracija](#sintezavimo-demonstracija)
       - [Paruošti modeliai](#paruošti-modeliai)
@@ -58,7 +58,7 @@ flowchart TD
     
 ```
 
-Turint Akustinį Modelį jau galima sintezuoti lietuvišką balsą naudojant suprogramuotą `Griffin-Lim` Vokoderį. Bet geresnė sintezuoto balso kokybė gaunama, kai Akustinis Modelis ir Vokoderis yra mokinami su to pačio kalbėtojo garsynais. Vokoderio mokinimo skriptai SEG garsymui yra [čia](https://github.com/airenas/ParallelWaveGAN/blob/master/egs/seg/voc1/README.lt.md).
+Turint Akustinį Modelį jau galima sintezuoti lietuvišką balsą naudojant suprogramuotą `Griffin-Lim` Vokoderį. Bet geresnė sintezuoto balso kokybė gaunama, kai Akustinis Modelis ir Vokoderis yra mokinami su to pačio kalbėtojo garsynais. Vokoderio mokinimo skriptai SEG garsymui yra [čia](https://github.com/airenas/ParallelWaveGAN/blob/master/egs/sing/voc1/README.lt.md).
 
 
 ### Reikalavimai
@@ -97,7 +97,7 @@ Patikriname, ar GPU randamas sukurtoje Python aplinkoje, ar tvarkyklė užkrauna
 
 ```bash
 ### patikriname 
-cd egs2/seg/tts1
+cd egs2/sing/tts1
 make info
 ```
 
@@ -110,7 +110,7 @@ cuda in python: 	12.x (arba 11.x)
 
 ### Mokymas
 
-#### SE Garsynas
+#### SING
 
 1. Parsisiunčiame garsyną vienam kalbėtojui zip formatu: *TBD*.
 2. Pasiruošiame `make` konfigūracinį failą `Makefile.options` šioje direktorijoje.
@@ -153,7 +153,7 @@ cuda in python: 	12.x (arba 11.x)
    ## arba, kad mokymas nenutrūktų uždarius terminalo langą
    nohup make build &
    ```
-    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/ exp/tts_train_fastspeech2_raw_phn_espeak_ng_lt/tts_train_fastspeech2_raw_phn_espeak_ng_lt_train.loss.ave.zip` archyve.
+    Modelis bus apmokytas, išsaugotas ir paruoštas `${work_dir}/exp/tts_train_fastspeech2_raw_phn_espeak_ng_lt/tts_train_fastspeech2_raw_phn_espeak_ng_lt_train.loss.ave.zip` archyve.
 
     Mokymo progresas matomas terminalo lange. Jei paleidžiama su `nohup`, tada progresas matomas `nohup.out` faile. Pvz.: `tail -f nohup.out`.
 
@@ -185,7 +185,7 @@ wrk-01
             ├── 00018c30-6e45-4039-b5d6-ab1de5ce861e.wav
             ├──             ...
 ```
-4. Tęskite mokymą kaip [SE Garsynas](#se-garsynas). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
+4. Tęskite mokymą kaip [SING](#sing). Konfigūracijoje `kelias iki garsyno` (`corpus_file`) bus nenaudojamas.
 
 
 ### Sintezavimo demonstracija
@@ -195,25 +195,25 @@ wrk-01
 #### Paruošti modeliai
 
 Viešai prieinami akustiniai modeliai ir vokoderiai:
-1. AM - TBD
-2. AM - TBD
-3. Vokoderis - TBD
-4. Vokoderis - TBD
+1. AM vyriškas balsas: [VSSA-SDSA/sing-arn.fastspeech2.v01](https://huggingface.co/VSSA-SDSA/sing-arn.fastspeech2.v01)
+2. AM moteriškas balsas - [VSSA-SDSA/sing-agn.fastspeech2.v01](https://huggingface.co/VSSA-SDSA/sing-agn.fastspeech2.v01)
+3. Vokoderis vyriškas balsas - [VSSA-SDSA/sing-arn.vocoder.style_melgan.v01](https://huggingface.co/VSSA-SDSA/sing-arn.vocoder.style_melgan.v01)
+4. Vokoderis moteriškas balsas - [VSSA-SDSA/sing-agn.vocoder.style_melgan.v01](https://huggingface.co/VSSA-SDSA/sing-agn.vocoder.style_melgan.v01)
 
 Pavyzdinis sintezavimo jupyter failas: [tts_jupyter_demo.ipynb](tts_jupyter_demo.ipynb).
 
-Demo internete: [![Atidaryti Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/airenas/espnet/blob/master/egs2/seg/tts1/tts_jupyter_demo.ipynb)
+Demo internete: [![Atidaryti Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/airenas/espnet/blob/master/egs2/sing/tts1/tts_jupyter_demo.ipynb)
 
 #### Lokaliame kompiuteryje
 
 Sintezuoti galite naudodami šios repozitorijos kodą Python aplinkoje. Jums reikės:
 
 1. Akustinio modelio. Jį galite:    
-   1.  mokinti [SE Garsynas](#se-garsynas) 
+   1.  mokinti [SING](#sing) 
    2.  arba atsisiųsti iš [Paruošti modeliai](#paruošti-modeliai).
 2. Vokoderio. Galite naudoti:
    1. suprogramuotą Griffin-Lim - prastesnė garso kokybė
-   2. mokinti [TBD](TBD) - aukšta garso kokybė
+   2. mokinti [ParallelWaveGAN](https://github.com/airenas/ParallelWaveGAN/blob/master/egs/sing/voc1/README.lt.md) - aukšta garso kokybė
    3. atsisisiųsti iš [Paruošti modeliai](#paruošti-modeliai)  - aukšta garso kokybė.
    
 Pavyzdinis jupyter failas: [tts_jupyter_demo_local.ipynb](tts_jupyter_demo_local.ipynb). 

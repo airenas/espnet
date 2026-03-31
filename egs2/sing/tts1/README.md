@@ -1,8 +1,8 @@
-# SEG (Sintezės emocinis garsynas) skriptai
+# SINtezės Garsynas scripts
 
-This is the recipe of Lithuanian single speaker TTS model with SEG corpus.
+This is the recipe of Lithuanian single speaker TTS model with SING corpus.
 
-Link to the SEG Corpus: *TBD*
+Link to the SING Corpus: *TBD*
 
 Detailed info in Lithuanian [README.lt](README.lt.md).
 
