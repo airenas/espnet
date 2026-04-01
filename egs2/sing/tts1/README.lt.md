@@ -12,9 +12,6 @@ Nuoroda į garsyną: *TBD (bus papildyta vėliau)*
       - [SING](#sing)
       - [Su kitu garsynu](#su-kitu-garsynu)
     - [Sintezavimo demonstracija](#sintezavimo-demonstracija)
-      - [Paruošti modeliai](#paruošti-modeliai)
-      - [Lokaliame kompiuteryje](#lokaliame-kompiuteryje)
-        - [Eiga](#eiga)
 
 ### Apie
 
@@ -190,37 +187,4 @@ wrk-01
 
 ### Sintezavimo demonstracija
 
-Čia pateikiame pavyzdžius kaip naudojant ESPnet galima sintezuoti lietuvišką tekstą.
-
-#### Paruošti modeliai
-
-Viešai prieinami akustiniai modeliai ir vokoderiai:
-1. AM vyriškas balsas: [VSSA-SDSA/sing-arn.fastspeech2.v01](https://huggingface.co/VSSA-SDSA/sing-arn.fastspeech2.v01)
-2. AM moteriškas balsas - [VSSA-SDSA/sing-agn.fastspeech2.v01](https://huggingface.co/VSSA-SDSA/sing-agn.fastspeech2.v01)
-3. Vokoderis vyriškas balsas - [VSSA-SDSA/sing-arn.vocoder.style_melgan.v01](https://huggingface.co/VSSA-SDSA/sing-arn.vocoder.style_melgan.v01)
-4. Vokoderis moteriškas balsas - [VSSA-SDSA/sing-agn.vocoder.style_melgan.v01](https://huggingface.co/VSSA-SDSA/sing-agn.vocoder.style_melgan.v01)
-
-Pavyzdinis sintezavimo jupyter failas: [tts_jupyter_demo.ipynb](tts_jupyter_demo.ipynb).
-
-Demo internete: [![Atidaryti Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/airenas/espnet/blob/master/egs2/sing/tts1/tts_jupyter_demo.ipynb)
-
-#### Lokaliame kompiuteryje
-
-Sintezuoti galite naudodami šios repozitorijos kodą Python aplinkoje. Jums reikės:
-
-1. Akustinio modelio. Jį galite:    
-   1.  mokinti [SING](#sing) 
-   2.  arba atsisiųsti iš [Paruošti modeliai](#paruošti-modeliai).
-2. Vokoderio. Galite naudoti:
-   1. suprogramuotą Griffin-Lim - prastesnė garso kokybė
-   2. mokinti [ParallelWaveGAN](https://github.com/airenas/ParallelWaveGAN/blob/master/egs/sing/voc1/README.lt.md) - aukšta garso kokybė
-   3. atsisisiųsti iš [Paruošti modeliai](#paruošti-modeliai)  - aukšta garso kokybė.
-   
-Pavyzdinis jupyter failas: [tts_jupyter_demo_local.ipynb](tts_jupyter_demo_local.ipynb). 
-
-##### Eiga
-
-1. Sudiekite [ESPnet](#espnet-diegimas).
-2. Papildomai espnet conda aplinkoje įdiekite `pip install parallel_wavegan jupyter --no-build-isolation`.
-3. Paleiskite jupyter `jupyter notebook` ir atsidarykite failą  `tts_jupyter_demo_local.ipynb` naršyklėje. Sekite instrukcijas jupyter faile.
-   
+Žr.: https://github.com/VSSA-AtvirasKodas-LT/LT_AI_SING?tab=readme-ov-file#%C5%A1nekos-sintez%C4%97
