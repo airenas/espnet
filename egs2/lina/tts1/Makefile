@@ -1,15 +1,8 @@
--include Makefile.options
-#####################################################################################
-USER=avaiciunas
-SERVER_URL?=agpu
-SSH_PORT?=22
-HOME_DIR?=/home/avaiciunas
-
-SSH_CMD=ssh -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
-SSH_TF_CMD=ssh -L 6006:localhost:6006 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
-SSH_JN_CMD=ssh -L 8888:localhost:8888 -p $(SSH_PORT) -t $(USER)@$(SERVER_URL)
+cfg?=Makefile.options
+-include $(cfg)
 #####################################################################################
 work_dir?=v-01
+corpus_dir?=corpus/data
 tts_dir=$(HOME_DIR)/gfs/tts
 exp_dir=$(tts_dir)/espnet/egs2/lina/tts1/$(work_dir)
 trans_type?=phn
@@ -28,29 +21,108 @@ $(work_dir)/downloads:
 
 init-data: | $(work_dir)/downloads	
 #####################################################################################
-logs:
-	$(SSH_CMD) "cd $(exp_dir) && tail -n 40 -f exp/$(exp)/train.log"
-
-nvidia:
-	$(SSH_CMD) "watch -n 10 nvidia-smi"
+#### PREPARE CORPUS
 #####################################################################################
-tensorboard:
-	$(SSH_TF_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
-		cd $(exp_dir)/exp/$(exp); pwd; \
-		tensorboard --logdir tensorboard/"
-
-jupyter:
-	$(SSH_JN_CMD) "source ~/miniconda3/etc/profile.d/conda.sh;conda activate tts; \
-		cd $(exp_dir)/../../notebook; pwd; jupyter notebook"
 #####################################################################################
-ssh:
-	$(SSH_CMD) "cd ~/gfs/tts/espnet/egs2/ && bash"
+#####################################################################################
+python_local_cmd=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
+
+${corpus_out_dir}/extracted ${corpus_out_dir}/lab ${corpus_out_dir}/range ${corpus_out_dir}/wav ${corpus_out_dir}/text \
+	${corpus_out_dir}/lists $(corpus_out_dir)/$(corpus) $(corpus_out_dir)/$(corpus)/wavs:
+	mkdir -p $@
+############################################
+${corpus_out_dir}/extracted/utf8.mlf: ${corpus_dir}/$(corpus_mlf) | ${corpus_out_dir}/extracted
+	iconv -f ISO-8859-13 -t UTF-8 $< > $@
+############################################
+${corpus_out_dir}/extracted/fixed.mlf: ${corpus_out_dir}/extracted/utf8.mlf | ${corpus_out_dir}/lab
+	pv $^ | $(python_local_cmd) ./local/exclude_files.py --exclude "$(exclude_files)" \
+		| $(python_local_cmd) ./local/fix_mlf.py \
+		| $(python_local_cmd) ./local/change_name.py --prefix '$(speaker)_' --strip-prefix '$(lab_prefix)' > $@
+############################################
+${corpus_out_dir}/extracted/fixed.split.mlf: ${corpus_out_dir}/extracted/fixed.mlf ${corpus_out_dir}/range/.done
+	pv ${corpus_out_dir}/extracted/fixed.mlf | $(python_local_cmd) ./local/mlf_by_range.py --rangeDir ${corpus_out_dir}/range > $@_
+	mv $@_ $@
+############################################
+${corpus_out_dir}/lab/.done: ${corpus_out_dir}/extracted/fixed.mlf | ${corpus_out_dir}/lab
+	pv $^ | $(python_local_cmd) ./local/split_mlf.py --outDir `dirname $@`
+	touch $@
+############################################
+${corpus_out_dir}/range/.done: ${corpus_out_dir}/lab/.done | ${corpus_out_dir}/range
+	ls -1 ${corpus_out_dir}/lab/*.lab | xargs -n1 -I {} -P 4 sh -c \
+		'base=`basename {} .lab`; \
+		cat {} | $(python_local_cmd) ./local/mlf_to_range.py --max-sil 400 --max-duration 20000 > ${corpus_out_dir}/range/$${base}.split.range'
+	touch $@
+############################################
+${corpus_out_dir}/wav/split.sh: ${corpus_out_dir}/range/.done | ${corpus_out_dir}/wav
+	rm -f $@_
+	ls -1 ${corpus_out_dir}/range/*.range | xargs -n1 -I {} sh -c \
+		'base=`basename {} .split.range`; \
+		cat {} | $(python_local_cmd) ./local/range_to_split_sh.py --name $${base} --in-dir $(corpus_wav_dir) --out-dir ${corpus_out_dir}/wav \
+			--strip-prefix '$(speaker)_' >> $@_'
+	mv $@_ $@	
+	chmod +x $@
+############################################
+${corpus_out_dir}/wav/.done: ${corpus_out_dir}/wav/split.sh
+	${corpus_out_dir}/wav/split.sh
+	touch ${corpus_out_dir}/wav/.done
+############################################
+${corpus_out_dir}/extracted/metadata.csv: ${corpus_out_dir}/extracted/fixed.split.mlf
+	pv $< | $(python_local_cmd) ./local/mlf_to_csv.py --outputPhones --skipSP > $@_
+	mv $@_ $@
+$(corpus_out_dir)/$(corpus)/metadata.csv: ${corpus_out_dir}/extracted/metadata.csv | $(corpus_out_dir)/$(corpus)
+	pv $< | sed '/noise/d' | sort > $@_
+	mv $@_ $@
+$(corpus_out_dir)/$(corpus)/durations: ${corpus_out_dir}/extracted/fixed.split.mlf ${corpus_out_dir}/extracted/audio.samples \
+	${corpus_out_dir}/extracted/exclude.files | $(corpus_out_dir)/$(corpus)
+	pv $< | $(python_local_cmd) ./local/exclude_files.py --excludeFromFile ${corpus_out_dir}/extracted/exclude.files \
+		| $(python_local_cmd) ./local/mlf_to_durations.py --shift $(step) --freq $(freq) --samplesFile ${corpus_out_dir}/extracted/audio.samples \
+		| sort > $@_
+	mv $@_ $@
+
+############################################
+${corpus_out_dir}/extracted/audio.samples: ${corpus_out_dir}/$(corpus)/wavs/.done
+	ls -1 ${corpus_out_dir}/$(corpus)/wavs/*.wav | sort | pv | $(python_local_cmd) ./local/audio_to_samples.py > $@_
+	mv $@_ $@
+############################################
+${corpus_out_dir}/extracted/exclude.files: ${corpus_out_dir}/extracted/metadata.csv
+	cat $< | grep 'noise' | awk -F'|' '{print $$1}' > $@_
+	mv $@_ $@
+############################################
+$(corpus_out_dir)/$(corpus)/wavs/.done: ${corpus_out_dir}/wav/.done ${corpus_out_dir}/extracted/exclude.files | $(corpus_out_dir)/$(corpus)/wavs
+	for wav in ${corpus_out_dir}/wav/*.wav; do \
+		base=`basename $${wav} .wav`; \
+		base=$$(echo $${base} | sed s/lab_//g); \
+		echo "Copy wav $${base}"; \
+		cp $${wav} $(corpus_out_dir)/$(corpus)/wavs/$${base}.wav; \
+		# echo "Converting WAV to 22050 Hz 16 bit for $${base}"; \
+		# sox $${wav} -r 22050 -b 16 $(corpus_out_dir)/$(corpus)/wavs/$${base}.wav; \
+	done
+	echo "Drop exluded files"
+	cat ${corpus_out_dir}/extracted/exclude.files | xargs -n 1 -I {} sh -c 'rm $(corpus_out_dir)/$(corpus)/wavs/{}.wav'
+	touch $(corpus_out_dir)/$(corpus)/wavs/.done
+############################################
+test/durations: $(corpus_out_dir)/$(corpus)/durations
+	cat $< | $(python_local_cmd) ./local/inspect_durations.py --duration 150 --shift $(step) --freq $(freq)
+test/corpus/len: $(corpus_out_dir)/$(corpus)/wavs/.done
+	ls -1 $(corpus_out_dir)/$(corpus)/wavs/*.wav | xargs -n1 soxi -D | $(python_local_cmd) -c "import sys; print(sum(float(x) for x in sys.stdin)/3600)"
+
+$(bin):
+	mkdir -p $(bin)
+############################################
+build/meta: $(corpus_out_dir)/$(corpus)/metadata.csv
+$(work_dir)/.corpus.prepare.done: $(corpus_out_dir)/$(corpus)/metadata.csv $(corpus_out_dir)/$(corpus)/durations
+prepare/corpus: $(work_dir)/.corpus.prepare.done
+############################################
+clean/corpus:
+	rm -rf $(corpus_out_dir)
+#####################################################################################
+#####################################################################################
 #####################################################################################
 train-all: $(work_dir)/.fs2.eval.done
 
-prepare-initial: $(work_dir)/.initial.prepare.done
+prepare/initial: $(work_dir)/.initial.prepare.done
 
-$(work_dir)/.initial.prepare.done:
+$(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.prepare.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 0 --stop-stage 4 --trans_type $(trans_type)
 	touch $@
 
