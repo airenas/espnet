@@ -53,7 +53,7 @@ def parse_line(line):
 
 def fix_symbols(line):
     return line.replace("�", "-").replace("–", "-").replace("—", "-").replace("<\">", "").replace("<„>", "").replace(
-        "<“>", "")
+        "<“>", "").replace("<>", "")
 
 
 def fix_sil(lines):
@@ -118,6 +118,10 @@ def fix_ne_excl(ml):
 
 def fix_parantheses(ml):
     if ml.punct == ")" or ml.punct == "(":
+        ml.punct = ","
+    if ml.punct == "\\":
+        ml.punct = "."
+    if ml.punct == ";":
         ml.punct = ","
 
 

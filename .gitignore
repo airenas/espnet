@@ -130,3 +130,5 @@ tools/versa
 tools/ParallelWaveGAN
 egs2/sing/tts1/voc/exp/
 egs2/sing/tts1/exp/
+egs2/lina/tts1/.data
+egs2/lina/tts1/corpus

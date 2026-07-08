@@ -16,19 +16,14 @@ f0min?=128
 f0max=350
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
-$(work_dir)/downloads:
-	mkdir -p $@
-
-init-data: | $(work_dir)/downloads	
-#####################################################################################
 #### PREPARE CORPUS
 #####################################################################################
 #####################################################################################
 #####################################################################################
 python_local_cmd=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
-
+		
 ${corpus_out_dir}/extracted ${corpus_out_dir}/lab ${corpus_out_dir}/range ${corpus_out_dir}/wav ${corpus_out_dir}/text \
-	${corpus_out_dir}/lists $(corpus_out_dir)/$(corpus) $(corpus_out_dir)/$(corpus)/wavs:
+	${corpus_out_dir}/lists $(corpus_out_dir)/$(corpus) $(corpus_out_dir)/$(corpus)/wavs $(work_dir)/downloads/${corpus}/wavs $(work_dir)/downloads/${corpus}:
 	mkdir -p $@
 ############################################
 ${corpus_out_dir}/extracted/utf8.mlf: ${corpus_dir}/$(corpus_mlf) | ${corpus_out_dir}/extracted
@@ -69,56 +64,58 @@ ${corpus_out_dir}/wav/.done: ${corpus_out_dir}/wav/split.sh
 ${corpus_out_dir}/extracted/metadata.csv: ${corpus_out_dir}/extracted/fixed.split.mlf
 	pv $< | $(python_local_cmd) ./local/mlf_to_csv.py --outputPhones --skipSP > $@_
 	mv $@_ $@
-$(corpus_out_dir)/$(corpus)/metadata.csv: ${corpus_out_dir}/extracted/metadata.csv | $(corpus_out_dir)/$(corpus)
+$(work_dir)/downloads/${corpus}/metadata.csv: ${corpus_out_dir}/extracted/metadata.csv | $(work_dir)/downloads/${corpus}
 	pv $< | sed '/noise/d' | sort > $@_
 	mv $@_ $@
-$(corpus_out_dir)/$(corpus)/durations: ${corpus_out_dir}/extracted/fixed.split.mlf ${corpus_out_dir}/extracted/audio.samples \
-	${corpus_out_dir}/extracted/exclude.files | $(corpus_out_dir)/$(corpus)
+$(work_dir)/downloads/${corpus}/durations: ${corpus_out_dir}/extracted/fixed.split.mlf ${corpus_out_dir}/extracted/audio.samples \
+	${corpus_out_dir}/extracted/exclude.files | $(work_dir)/downloads/${corpus}		
 	pv $< | $(python_local_cmd) ./local/exclude_files.py --excludeFromFile ${corpus_out_dir}/extracted/exclude.files \
 		| $(python_local_cmd) ./local/mlf_to_durations.py --shift $(step) --freq $(freq) --samplesFile ${corpus_out_dir}/extracted/audio.samples \
 		| sort > $@_
 	mv $@_ $@
 
 ############################################
-${corpus_out_dir}/extracted/audio.samples: ${corpus_out_dir}/$(corpus)/wavs/.done
-	ls -1 ${corpus_out_dir}/$(corpus)/wavs/*.wav | sort | pv | $(python_local_cmd) ./local/audio_to_samples.py > $@_
+${corpus_out_dir}/extracted/audio.samples: $(work_dir)/downloads/${corpus}/wavs/.done
+	ls -1 $(work_dir)/downloads/${corpus}/wavs/*.wav | sort | pv | $(python_local_cmd) ./local/audio_to_samples.py > $@_
 	mv $@_ $@
 ############################################
 ${corpus_out_dir}/extracted/exclude.files: ${corpus_out_dir}/extracted/metadata.csv
 	cat $< | grep 'noise' | awk -F'|' '{print $$1}' > $@_
 	mv $@_ $@
 ############################################
-$(corpus_out_dir)/$(corpus)/wavs/.done: ${corpus_out_dir}/wav/.done ${corpus_out_dir}/extracted/exclude.files | $(corpus_out_dir)/$(corpus)/wavs
+$(work_dir)/downloads/${corpus}/wavs/.done: ${corpus_out_dir}/wav/.done ${corpus_out_dir}/extracted/exclude.files | $(work_dir)/downloads/${corpus}/wavs
 	for wav in ${corpus_out_dir}/wav/*.wav; do \
 		base=`basename $${wav} .wav`; \
 		base=$$(echo $${base} | sed s/lab_//g); \
-		echo "Copy wav $${base}"; \
-		cp $${wav} $(corpus_out_dir)/$(corpus)/wavs/$${base}.wav; \
-		# echo "Converting WAV to 22050 Hz 16 bit for $${base}"; \
-		# sox $${wav} -r 22050 -b 16 $(corpus_out_dir)/$(corpus)/wavs/$${base}.wav; \
+# 		echo "Copy wav $${base}"; \
+# 		cp $${wav} $(work_dir)/downloads/${corpus}/wavs/$${base}.wav; \
+		echo "Converting WAV to $(freq) Hz 16 bit for $${base}"; \
+		sox $${wav} -r $(freq) -b 16 $(work_dir)/downloads/${corpus}/wavs/$${base}.wav; \
 	done
 	echo "Drop exluded files"
-	cat ${corpus_out_dir}/extracted/exclude.files | xargs -n 1 -I {} sh -c 'rm $(corpus_out_dir)/$(corpus)/wavs/{}.wav'
-	touch $(corpus_out_dir)/$(corpus)/wavs/.done
+	cat ${corpus_out_dir}/extracted/exclude.files | xargs -n 1 -I {} sh -c 'rm $(work_dir)/downloads/${corpus}/wavs/{}.wav'
+	touch $(work_dir)/downloads/${corpus}/wavs/.done
 ############################################
-test/durations: $(corpus_out_dir)/$(corpus)/durations
+test/durations: $(work_dir)/downloads/${corpus}/durations
 	cat $< | $(python_local_cmd) ./local/inspect_durations.py --duration 150 --shift $(step) --freq $(freq)
-test/corpus/len: $(corpus_out_dir)/$(corpus)/wavs/.done
-	ls -1 $(corpus_out_dir)/$(corpus)/wavs/*.wav | xargs -n1 soxi -D | $(python_local_cmd) -c "import sys; print(sum(float(x) for x in sys.stdin)/3600)"
+test/corpus/len: $(work_dir)/downloads/${corpus}/wavs/.done
+	ls -1 $(work_dir)/downloads/${corpus}/wavs/*.wav | xargs -n1 soxi -D | $(python_local_cmd) -c "import sys; print(f'{sum(float(x) for x in sys.stdin)/3600:.3f}h')"
 
 $(bin):
 	mkdir -p $(bin)
 ############################################
 build/meta: $(corpus_out_dir)/$(corpus)/metadata.csv
-$(work_dir)/.corpus.prepare.done: $(corpus_out_dir)/$(corpus)/metadata.csv $(corpus_out_dir)/$(corpus)/durations
+$(work_dir)/.corpus.prepare.done: $(work_dir)/downloads/${corpus}/metadata.csv $(work_dir)/downloads/${corpus}/durations
+	touch $@
 prepare/corpus: $(work_dir)/.corpus.prepare.done
 ############################################
 clean/corpus:
+	@echo -n "Are you sure to delete $(corpus_out_dir)? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(corpus_out_dir)
 #####################################################################################
 #####################################################################################
 #####################################################################################
-train-all: $(work_dir)/.fs2.eval.done
+train/all: $(work_dir)/.fs2.eval.done
 
 prepare/initial: $(work_dir)/.initial.prepare.done
 
@@ -181,8 +178,7 @@ clean:
 	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank \
 		$(work_dir)/tensorboard $(work_dir)/duration
 	rm -f $(work_dir)/.*.*.*
-
-clean-data:
+clean/data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/downloads
 #####################################################################################

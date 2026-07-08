@@ -15,13 +15,8 @@ set -euo pipefail
 
 cwd=$(pwd)
 if [ ! -e "${download_dir}/${corpus}" ]; then
-    mkdir -p "${download_dir}"
-    cp ${corpus_file} ${download_dir}/
-    cd "${download_dir}" 
-    tar -vxf ./*.tar.gz
-    rm ./*.tar.gz
-    cd "${cwd}"
-    echo "successfully prepared data."
+    echo "please prepare audio corpus in ${download_dir}/${corpus}"
+    exit 1
 else
     echo "already exists. skipped."
 fi
