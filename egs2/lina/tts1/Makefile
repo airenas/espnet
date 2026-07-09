@@ -13,7 +13,7 @@ test_count?=100
 inference_model?=train.loss.ave.pth
 speaker?=LIN
 f0min?=128
-f0max=350
+f0max?=350
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 #### INFO
