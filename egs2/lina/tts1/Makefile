@@ -39,6 +39,12 @@ info:
 	@echo "exclude_files: $(exclude_files)"
 	@echo "freq: $(freq)"
 	@echo "step: $(step)"
+	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
+	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
+	@echo "python: 			$$(python --version)"
+	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
+	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
+.PHONY: info	
 #####################################################################################
 #### PREPARE CORPUS
 #####################################################################################
@@ -132,17 +138,19 @@ build/meta: $(corpus_out_dir)/$(corpus)/metadata.csv
 $(work_dir)/.corpus.prepare.done: $(work_dir)/downloads/${corpus}/metadata.csv $(work_dir)/downloads/${corpus}/durations
 	touch $@
 prepare/corpus: $(work_dir)/.corpus.prepare.done
+.PHONY: prepare/corpus
 ############################################
 clean/corpus:
 	@echo -n "Are you sure to delete $(corpus_out_dir)? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(corpus_out_dir)
+.PHONY: clean/corpus
 #####################################################################################
 #####################################################################################
 #####################################################################################
 train/all: $(work_dir)/.fs2.eval.done
-
+.PHONY: train/all
 prepare/initial: $(work_dir)/.initial.prepare.done
-
+.PHONY: prepare/initial
 $(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.prepare.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 0 --stop-stage 4 --trans_type $(trans_type)
 	touch $@
@@ -193,17 +201,16 @@ pack-fastspeech2:
 train-one:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
 #####################################################################################
-put-data:
-	$(SSH_CMD) "mkdir -p $(exp_dir)/downloads"
-	scp -P $(SSH_PORT) $(corpus_file) $(USER)@$(SERVER_URL):$(exp_dir)/downloads
-#####################################################################################
 clean:
 	@echo -n "Are you sure to delete $(work_dir)/...? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/data $(work_dir)/exp $(work_dir)/dump $(work_dir)/exp $(work_dir)/fbank \
 		$(work_dir)/tensorboard $(work_dir)/duration
 	rm -f $(work_dir)/.*.*.*
+.PHONY: clean
+
 clean/data:
 	@echo -n "Are you sure to delete $(work_dir)/downloads? [y/N] " && read ans && [ $${ans:-N} = y ]
 	rm -rf $(work_dir)/downloads
+.PHONY: clean/data
 #####################################################################################
 .EXPORT_ALL_VARIABLES:	
