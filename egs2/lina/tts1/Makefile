@@ -16,6 +16,30 @@ f0min?=128
 f0max=350
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
+#### INFO
+#####################################################################################
+info:
+	@echo "work_dir: $(work_dir)"
+	@echo "corpus_dir: $(corpus_dir)"
+	@echo "corpus_out_dir: $(corpus_out_dir)"
+	@echo "exp_dir: $(exp_dir)"
+	@echo "trans_type: $(trans_type)"
+	@echo "exp: $(exp)"
+	@echo "cuda: $(cuda)"
+	@echo "ngpu: $(ngpu)"
+	@echo "inference_model: $(inference_model)"
+	@echo "speaker: $(speaker)"
+	@echo "f0min: $(f0min)"
+	@echo "f0max: $(f0max)"
+	@echo "test_count: $(test_count)"
+	@echo "corpus: $(corpus)"
+	@echo "corpus_mlf: $(corpus_mlf)"
+	@echo "lab_prefix: $(lab_prefix)"
+	@echo "corpus_wav_dir: $(corpus_wav_dir)"
+	@echo "exclude_files: $(exclude_files)"
+	@echo "freq: $(freq)"
+	@echo "step: $(step)"
+#####################################################################################
 #### PREPARE CORPUS
 #####################################################################################
 #####################################################################################
