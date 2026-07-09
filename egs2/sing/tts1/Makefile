@@ -36,6 +36,7 @@ info:
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
 	@echo "torch: 			$$(python -c 'import torch; print(torch.__version__)')"
+	@echo "torchaudio: 		$$(python -c 'import torchaudio; print(torchaudio.__version__)')"
 	@echo "cuda in python: 	$$(python -c 'import torch; print(torch.version.cuda) if torch.cuda.is_available() else "N/A"')"
 .PHONY: info
 #####################################################################################

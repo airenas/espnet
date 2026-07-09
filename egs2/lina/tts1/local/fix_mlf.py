@@ -123,6 +123,8 @@ def fix_parantheses(ml):
         ml.punct = "."
     if ml.punct == ";":
         ml.punct = ","
+    if ml.punct == ":":
+        ml.punct = ","        
 
 
 def fix_dots(ml):
