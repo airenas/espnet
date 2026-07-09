@@ -3,8 +3,6 @@ cfg?=Makefile.options
 #####################################################################################
 work_dir?=v-01
 corpus_dir?=corpus/data
-tts_dir=$(HOME_DIR)/gfs/tts
-exp_dir=$(tts_dir)/espnet/egs2/lina/tts1/$(work_dir)
 trans_type?=phn
 exp?=tts_train_raw_phn_none
 cuda?=0
@@ -22,7 +20,6 @@ info:
 	@echo "work_dir: $(work_dir)"
 	@echo "corpus_dir: $(corpus_dir)"
 	@echo "corpus_out_dir: $(corpus_out_dir)"
-	@echo "exp_dir: $(exp_dir)"
 	@echo "trans_type: $(trans_type)"
 	@echo "exp: $(exp)"
 	@echo "cuda: $(cuda)"
