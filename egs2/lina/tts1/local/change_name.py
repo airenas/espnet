@@ -1,4 +1,5 @@
 import argparse
+import fileinput
 import sys
 
 
@@ -7,9 +8,9 @@ def is_name(line):
 
 
 def update(line, prefix, strip_prefix):
-    line = line.lstrip("\"")
+    line = line.removeprefix("\"")
     if strip_prefix:
-        line = line.lstrip(strip_prefix)
+        line = line.removeprefix(strip_prefix)
 
     return "\"" + prefix + line
 
@@ -20,13 +21,15 @@ def main(argv):
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--prefix", default='SAB_', type=str, help="Add prefix", required=False)
     parser.add_argument("--strip-prefix", default='', type=str, help="Strip lab prefix", required=False)
+    parser.add_argument("files", nargs="*", help="Input MLF file(s), reads stdin when omitted")
     args = parser.parse_args(args=argv)
 
     print("Starting", file=sys.stderr)
     print(f"Add prefix: {args.prefix}, strip prefix: {args.strip_prefix}", file=sys.stderr)
 
     lc = 0
-    for line in sys.stdin:
+    files = args.files if args.files else ("-",)
+    for line in fileinput.input(files=files):
         lc += 1
         line = line.rstrip()
         if is_name(line) and args.prefix:

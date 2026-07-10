@@ -18,7 +18,7 @@ def main(argv):
 
     for i, r in enumerate(ranges):
         print("sox %s/%s.wav %s/lab_%s_%03d.wav trim %f =%f" %
-              (args.in_dir, args.name.lstrip(args.strip_prefix), args.out_dir, args.name, i, r.from_ / 10000000, r.to / 10000000),
+              (args.in_dir, args.name.removeprefix(args.strip_prefix), args.out_dir, args.name, i, r.from_ / 10000000, r.to / 10000000),
               file=sys.stdout)
 
     print("Read %d lines" % len(ranges), file=sys.stderr)
