@@ -8,10 +8,11 @@ exp?=tts_train_raw_phn_none
 cuda?=0
 ngpu?=1
 test_count?=100
-inference_model?=train.loss.ave.pth
+inference_model?=train.loss.ave
 speaker?=LIN
 f0min?=128
 f0max?=350
+final_fs2_model?=train.loss.ave
 # exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 #### INFO
@@ -25,6 +26,7 @@ info:
 	@echo "cuda: $(cuda)"
 	@echo "ngpu: $(ngpu)"
 	@echo "inference_model: $(inference_model)"
+	@echo "final_fs2_model: $(final_fs2_model)"
 	@echo "speaker: $(speaker)"
 	@echo "f0min: $(f0min)"
 	@echo "f0max: $(f0max)"
@@ -193,9 +195,24 @@ $(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
 prepare-fs2: $(work_dir)/.fs2.prepare.done 
 train-fs2: $(work_dir)/.fs2.train.done
 eval-fs2: $(work_dir)/.fs2.eval.done
-pack-fastspeech2: 
-	./run.sh --stage 8 --stop-stage 8 --inference_model ${inference_model} $(fastspeech2_params)
-
+######################################################################################
+# PACK MODEL
+######################################################################################
+exp_suffix?=phn_none
+fs2_pack_params=--trans_type $(token_type) \
+		--train_config conf/tuning/train_fastspeech2.yaml \
+		--skip_packing false \
+		--inference_model ${final_fs2_model}.pth 
+pack/fs2: $(work_dir)/.fs2.train.done
+	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
+	# add missing files
+	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_$(exp_suffix)/tts_train_fastspeech2_raw_$(exp_suffix)_${final_fs2_model}.zip \
+		$(work_dir)/exp/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
+.PHONY: pack/fs2
+#####################################################################################		
+build: pack/fs2
+.PHONY: build
+#####################################################################################		
 train-one:
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage $(stage) --stop-stage $(stage) --trans_type $(trans_type)
 #####################################################################################
