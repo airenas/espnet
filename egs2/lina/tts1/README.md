@@ -4,21 +4,55 @@ Written by Airenas Vaičiūnas @ VMU, Kaunas (2021)
 
 ## tts1 recipe
 
-This is the recipe of Lithuanian single female speaker TTS corpus.
+This is the recipe of Lithuanian single speaker TTS corpus.
+
+
+### Prepare
+
+#### Config
+
+Make `Makefile.options.<speaker>` file with added info about corpus and output dirs:
+```make
+# path to corpus dir
+corpus_dir?=corpus/ner/v01
+# mlf file in corpus
+corpus_mlf?=metadata.mlf
+# utterance prefix in mlf
+lab_prefix?=sint_i/NER/
+corpus_wav_dir?=$(corpus_dir)/WAV44_match
+
+# experiments dir
+work_dir?=.data/sing/ner/v01
+corpus_out_dir?=$(work_dir)/corpus
+corpus?=ner
+# speaker name
+speaker?=NER
+# speaker f0 ranges
+f0min?=128
+f0max=350
+
+exclude_files?=
+freq?=22050
+step?=256   
+```
+
 
 ### Train
 
 ```bash
-make train-fs2
+make cfg=Makefile.options.<speaker> build
 ## or
-nohup make train-fs2 > v01.log &
+nohup make cfg=Makefile.options.<speaker> build &
 ```
 
-### Pack model
+It will train and pack the model in working directory.
 
-```bash
-make pack-fastspeech2 inference_model=1500epoch.pth
-```
+### Test
+
+Sample hoe to use the packed model is provided in the [jupyter notebook](tts_demo.ipynb):
+
+---
+
 
 
 See the following pages for the usage:
