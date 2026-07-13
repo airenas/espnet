@@ -158,7 +158,7 @@ $(work_dir)/.initial.prepare.done: $(work_dir)/.corpus.prepare.done
 fastspeech2_params=--trans_type $(trans_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
     	--teacher_dumpdir $(work_dir)/duration \
-    	--tts_stats_dir $(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_train.loss.ave/stats \
+    	--tts_stats_dir $(work_dir)/exp/decode_use_teacher_forcingtrue_${inference_model}/stats \
     	--write_collected_feats true
 
 $(work_dir)/duration/tr_no_dev:
@@ -185,16 +185,11 @@ $(work_dir)/.fs2.prepare.done: $(work_dir)/duration/tr_no_dev/durations $(work_d
 	touch $@
 
 $(work_dir)/.fs2.train.done: $(work_dir)/.fs2.prepare.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 6 $(fastspeech2_params)
-	touch $@
-
-$(work_dir)/.fs2.eval.done: $(work_dir)/.fs2.train.done
-	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 7 --stop-stage 7 $(fastspeech2_params)
+	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 7 $(fastspeech2_params)
 	touch $@
 
 prepare-fs2: $(work_dir)/.fs2.prepare.done 
 train-fs2: $(work_dir)/.fs2.train.done
-eval-fs2: $(work_dir)/.fs2.eval.done
 ######################################################################################
 # PACK MODEL
 ######################################################################################

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2019 Tomoki Hayashi
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
@@ -26,41 +26,59 @@ min() {
 SECONDS=0
 
 # General configuration
-stage=1              # Processes starts from the specified stage.
-stop_stage=10000     # Processes is stopped at the specified stage.
-skip_data_prep=false # Skip data preparation stages.
-skip_train=false     # Skip training stages.
-skip_eval=false      # Skip decoding and evaluation stages.
-skip_upload=false     # Skip packing and uploading stages.
-ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
-num_nodes=1          # The number of nodes.
-nj=32                # The number of parallel jobs.
-inference_nj=32      # The number of parallel jobs in decoding.
-gpu_inference=false  # Whether to perform gpu decoding.
-dumpdir=${work_dir}/dump         # Directory to dump features.
-expdir=${work_dir}/exp           # Directory to save experiments.
-python=python3       # Specify python to execute espnet commands.
+stage=1                 # Processes starts from the specified stage.
+stop_stage=10000        # Processes is stopped at the specified stage.
+skip_data_prep=false    # Skip data preparation stages.
+skip_train=false        # Skip training stages.
+skip_eval=false         # Skip decoding and evaluation stages.
+skip_packing=true       # Skip the packing stage.
+skip_upload_hf=true     # Skip uploading to huggingface stage.
+ngpu=1                  # The number of gpus ("0" uses cpu, otherwise use gpu).
+num_nodes=1             # The number of nodes.
+nj=32                   # The number of parallel jobs.
+inference_nj=32         # The number of parallel jobs in decoding.
+gpu_inference=false     # Whether to perform gpu decoding.
+dumpdir=${work_dir}/dump            # Directory to dump features.
+expdir=${work_dir}/exp              # Directory to save experiments.
+python=python3          # Specify python to execute espnet commands.
 
 # Data preparation related
 local_data_opts="" # Options to be passed to local/data.sh.
 
 # Feature extraction related
-feats_type=raw       # Feature type (fbank or stft or raw).
-audio_format=flac    # Audio format: wav, flac, wav.ark, flac.ark  (only in feats_type=raw).
-min_wav_duration=0.1 # Minimum duration in second.
-max_wav_duration=20  # Maximum duration in second.
-# Only used for feats_type != raw
-fs=16000          # Sampling rate.
-fmin=80           # Minimum frequency of Mel basis.
-fmax=7600         # Maximum frequency of Mel basis.
-n_mels=80         # The number of mel basis.
-n_fft=1024        # The number of fft points.
-n_shift=256       # The number of shift points.
-win_length=null   # Window length.
-# Only used for the model using pitch features (e.g. FastSpeech2)
-f0min=80          # Maximum f0 for pitch extraction.
-f0max=400         # Minimum f0 for pitch extraction.
+feats_type=raw             # Input feature type.
+audio_format=flac          # Audio format: wav, flac, wav.ark, flac.ark  (only in feats_type=raw).
+min_wav_duration=0.1       # Minimum duration in second.
+max_wav_duration=20        # Maximum duration in second.
+use_sid=false              # Whether to use speaker id as the inputs (Need utt2spk in data directory).
+use_lid=false              # Whether to use language id as the inputs (Need utt2lang in data directory).
+feats_extract=fbank        # On-the-fly feature extractor.
+feats_normalize=global_mvn # On-the-fly feature normalizer.
+fs=16000                   # Sampling rate.
+n_fft=1024                 # The number of fft points.
+n_shift=256                # The number of shift points.
+win_length=null            # Window length.
+fmin=80                    # Minimum frequency of Mel basis.
+fmax=7600                  # Maximum frequency of Mel basis.
+n_mels=80                  # The number of mel basis.
+# Only used for the model using pitch & energy features (e.g. FastSpeech2)
+f0min=80  # Maximum f0 for pitch extraction.
+f0max=400 # Minimum f0 for pitch extraction.
 
+# Speaker embedding related
+use_spk_embed=false      # Whether to use speaker embedding.
+spk_embed_tag=espnet_spk # The additional tag of speaker embedding folder, use "xvector" for compatibility.
+spk_embed_gpu_inference=false # Whether to use gpu to inference speaker embedding.
+spk_embed_tool=espnet    # Toolkit for extracting x-vector (speechbrain, rawnet, espnet, kaldi).
+spk_embed_model=espnet/voxcelebs12_rawnet3  # For only espnet, speechbrain, or rawnet.
+
+# Parallel speaker-embedding extraction (NEW)
+spk_embed_parallel=true        # if true, use extract_spk_embed_parallel.py
+spk_embed_num_workers=8        # dataloader workers for parallel extractor
+spk_embed_batch_size=8         # batch size for parallel extractor
+spk_embed_prefetch=64          # prefetch queue length (if supported)
+
+# Vocabulary related
 oov="<unk>"         # Out of vocabrary symbol.
 blank="<blank>"     # CTC blank symbol.
 sos_eos="<sos/eos>" # sos and eos symbols.
@@ -70,15 +88,16 @@ train_config=""    # Config for training.
 train_args=""      # Arguments for training, e.g., "--max_epoch 1".
                    # Note that it will overwrite args in train config.
 tag=""             # Suffix for training directory.
-tts_exp=""         # Specify the direcotry path for experiment. If this option is specified, tag is ignored.
-tts_stats_dir=""   # Specify the direcotry path for statistics. If empty, automatically decided.
+tts_exp=""         # Specify the directory path for experiment. If this option is specified, tag is ignored.
+tts_stats_dir=""   # Specify the directory path for statistics. If empty, automatically decided.
 num_splits=1       # Number of splitting for tts corpus.
 teacher_dumpdir="" # Directory of teacher outputs (needed if tts=fastspeech).
 write_collected_feats=false # Whether to dump features in stats collection.
+tts_task=tts                # TTS task (tts or gan_tts).
 
 # Decoding related
 inference_config="" # Config for decoding.
-inference_args=""   # Arguments for decoding, e.g., "--threshold 0.75".
+inference_args=""   # Arguments for decoding (e.g., "--threshold 0.75").
                     # Note that it will overwrite args in inference config.
 inference_tag=""    # Suffix for decoding directory.
 inference_model=train.loss.ave.pth # Model path for decoding.
@@ -87,8 +106,8 @@ inference_model=train.loss.ave.pth # Model path for decoding.
                                    # inference_model=3epoch.pth
                                    # inference_model=valid.acc.best.pth
                                    # inference_model=valid.loss.ave.pth
-griffin_lim_iters=4 # the number of iterations of Griffin-Lim.
-download_model=""   # Download a model from Model Zoo and use it for decoding.
+vocoder_file=none  # Vocoder parameter file, If set to none, Griffin-Lim will be used.
+download_model=""  # Download a model from Model Zoo and use it for decoding.
 
 # [Task dependent] Set the datadir name created by local/data.sh
 train_set=""     # Name of training set.
@@ -96,41 +115,63 @@ valid_set=""     # Name of validation set used for monitoring/tuning network tra
 test_sets=""     # Names of test sets. Multiple items (e.g., both dev and eval sets) can be specified.
 srctexts=""      # Texts to create token list. Multiple items can be specified.
 nlsyms_txt=none  # Non-linguistic symbol list (needed if existing).
-token_type=phn   # Transcription type.
-cleaner=none     # Text cleaner.
-g2p=none         # g2p method (needed if token_type=phn).
+token_type=phn   # Transcription type (char or phn).
+cleaner=tacotron # Text cleaner.
+g2p=g2p_en       # g2p method (needed if token_type=phn).
 lang=noinfo      # The language type of corpus.
 text_fold_length=150   # fold_length for text data.
 speech_fold_length=800 # fold_length for speech data.
+
+# VERSA eval related
+skip_scoring=false # Skip scoring stages.
+versa_config=conf/versa.yaml # VERSA evaluation configuration.
+
+
+# Upload model related
+hf_repo=
 
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>" --srctexts "<srctexts>"
 
 Options:
     # General configuration
-    --stage          # Processes starts from the specified stage (default="${stage}").
-    --stop_stage     # Processes is stopped at the specified stage (default="${stop_stage}").
-    --skip_data_prep # Skip data preparation stages (default="${skip_data_prep}").
-    --skip_train     # Skip training stages (default="${skip_train}").
-    --skip_eval      # Skip decoding and evaluation stages (default="${skip_eval}").
-    --skip_upload    # Skip packing and uploading stages (default="${skip_upload}").
-    --ngpu           # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
-    --num_nodes      # The number of nodes (default="${num_nodes}").
-    --nj             # The number of parallel jobs (default="${nj}").
-    --inference_nj   # The number of parallel jobs in decoding (default="${inference_nj}").
-    --gpu_inference  # Whether to perform gpu decoding (default="${gpu_inference}").
-    --dumpdir        # Directory to dump features (default="${dumpdir}").
-    --expdir         # Directory to save experiments (default="${expdir}").
-    --python         # Specify python to execute espnet commands (default="${python}").
+    --stage              # Processes starts from the specified stage (default="${stage}").
+    --stop_stage         # Processes is stopped at the specified stage (default="${stop_stage}").
+    --skip_data_prep     # Skip data preparation stages (default="${skip_data_prep}").
+    --skip_train         # Skip training stages (default="${skip_train}").
+    --skip_eval          # Skip decoding and evaluation stages (default="${skip_eval}").
+    --skip_packing       # Skip the packing stage (default="${skip_packing}").
+    --skip_upload_hf     # Skip uploading to huggingface stage (default="${skip_upload_hf}").
+    --ngpu               # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
+    --num_nodes          # The number of nodes (default="${num_nodes}").
+    --nj                 # The number of parallel jobs (default="${nj}").
+    --inference_nj       # The number of parallel jobs in decoding (default="${inference_nj}").
+    --gpu_inference      # Whether to perform gpu decoding (default="${gpu_inference}").
+    --dumpdir            # Directory to dump features (default="${dumpdir}").
+    --expdir             # Directory to save experiments (default="${expdir}").
+    --python             # Specify python to execute espnet commands (default="${python}").
 
     # Data prep related
     --local_data_opts # Options to be passed to local/data.sh (default="${local_data_opts}").
 
     # Feature extraction related
-    --feats_type       # Feature type (fbank or stft or raw, default="${feats_type}").
+    --feats_type       # Feature type (default="${feats_type}").
     --audio_format     # Audio format: wav, flac, wav.ark, flac.ark  (only in feats_type=raw, default="${audio_format}").
     --min_wav_duration # Minimum duration in second (default="${min_wav_duration}").
     --max_wav_duration # Maximum duration in second (default="${max_wav_duration}").
+    --use_spk_embed    # Whether to use speaker_embedding (default="${use_spk_embed}").
+    --spk_embed_tag    # The tag of speaker embedding folder, use "xvector" for compatibility (default="${spk_embed_tag}").
+    --spk_embed_gpu_inference # Whether to use gpu to inference speaker embedding (default="${spk_embed_gpu_inference}").
+    --spk_embed_tool   # Toolkit for generating the speaker embedding (default="${spk_embed_tool}").
+    --spk_embed_model  # Pretrained model to generate the speaker embedding (default="${spk_embed_model}").
+	--spk_embed_parallel     # Use parallel extractor (default="${spk_embed_parallel}").
+    --spk_embed_num_workers  # Num workers for parallel extractor (default="${spk_embed_num_workers}").
+    --spk_embed_batch_size   # Batch size for parallel extractor (default="${spk_embed_batch_size}").
+    --spk_embed_prefetch     # Prefetch for parallel extractor (default="${spk_embed_prefetch}").
+    --use_sid          # Whether to use speaker id as the inputs (default="${use_sid}").
+    --use_lid          # Whether to use language id as the inputs (default="${use_lid}").
+    --feats_extract    # On the fly feature extractor (default="${feats_extract}").
+    --feats_normalize  # Feature normalizer for on the fly feature extractor (default="${feats_normalize}")
     --fs               # Sampling rate (default="${fs}").
     --fmax             # Maximum frequency of Mel basis (default="${fmax}").
     --fmin             # Minimum frequency of Mel basis (default="${fmin}").
@@ -150,12 +191,14 @@ Options:
                     # e.g., --train_args "--max_epoch 1"
                     # Note that it will overwrite args in train config.
     --tag           # Suffix for training directory (default="${tag}").
-    --tts_exp       # Specify the direcotry path for experiment.
+    --tts_exp       # Specify the directory path for experiment.
                     # If this option is specified, tag is ignored (default="${tts_exp}").
-    --tts_stats_dir # Specify the direcotry path for statistics.
+    --tts_stats_dir # Specify the directory path for statistics.
                     # If empty, automatically decided (default="${tts_stats_dir}").
     --num_splits    # Number of splitting for tts corpus (default="${num_splits}").
+    --teacher_dumpdir       # Directory of teacher outputs (needed if tts=fastspeech, default="${teacher_dumpdir}").
     --write_collected_feats # Whether to dump features in statistics collection (default="${write_collected_feats}").
+    --tts_task              # TTS task {tts or gan_tts} (default="${tts_task}").
 
     # Decoding related
     --inference_config  # Config for decoding (default="${inference_config}").
@@ -164,8 +207,13 @@ Options:
                         # Note that it will overwrite args in inference config.
     --inference_tag     # Suffix for decoding directory (default="${inference_tag}").
     --inference_model   # Model path for decoding (default=${inference_model}).
-    --griffin_lim_iters # The number of iterations of Griffin-Lim (default=${griffin_lim_iters}).
+    --vocoder_file      # Vocoder paramemter file (default=${vocoder_file}).
+                        # If set to none, Griffin-Lim vocoder will be used.
     --download_model    # Download a model from Model Zoo and use it for decoding (default="${download_model}").
+
+    # VERSA scoring related
+    --skip_scoring      # Skip scoring stages (default="${skip_scoring}").
+    --versa_config      # VERSA evaluation configuration (default="${versa_config}").
 
     # [Task dependent] Set the datadir name created by local/data.sh.
     --train_set          # Name of training set (required).
@@ -186,8 +234,13 @@ EOF
 
 log "$0 $*"
 # Save command line args for logging (they will be lost after utils/parse_options.sh)
-run_args=$(pyscripts/utils/print_args.py $0 "$@")
+run_args=$(scripts/utils/print_args.sh $0 "$@")
 . utils/parse_options.sh
+
+if [[ ${use_sid:-false} = true && ${use_spk_embed:-false} = true ]]; then
+    log "Error: --use_sid and --use_spk_embed cannot both be true; pick one."
+    exit 2
+fi
 
 if [ $# -ne 0 ]; then
     log "${help_message}"
@@ -198,24 +251,17 @@ fi
 . ./path.sh
 . ./cmd.sh
 
-echo ngpu=${ngpu}
-echo inference_model=${inference_model}
-
 # Check feature type
-if [ "${feats_type}" = fbank ]; then
-    data_feats="${dumpdir}/fbank"
-elif [ "${feats_type}" = stft ]; then
-    data_feats="${dumpdir}/stft"
-elif [ "${feats_type}" = raw ]; then
+if [ "${feats_type}" = raw ]; then
     data_feats="${dumpdir}/raw"
 else
     log "${help_message}"
-    log "Error: not supported: --feats_type ${feats_type}"
+    log "Error: only supported: --feats_type raw"
     exit 2
 fi
 
 # Check token list type
-token_listdir="${work_dir}/data/token_list/${token_type}"
+token_listdir="${dumpdir}/token_list/${token_type}"
 if [ "${cleaner}" != none ]; then
     token_listdir+="_${cleaner}"
 fi
@@ -223,6 +269,21 @@ if [ "${token_type}" = phn ]; then
     token_listdir+="_${g2p}"
 fi
 token_list="${token_listdir}/tokens.txt"
+
+data_dir="data"
+if [ -e "${work_dir}" ]; then
+    data_dir="${work_dir}/data"
+fi
+
+log "Data dir ${data_dir}."
+
+# Check old version token list dir existence
+if [ -e ${data_dir}/token_list ] && [ ! -e "${dumpdir}/token_list" ]; then
+    log "Default token_list directory path is changed from data to ${dumpdir}."
+    log "Copy data/token_list to ${dumpdir}/token_list for the compatibility."
+    [ ! -e ${dumpdir} ] && mkdir -p ${dumpdir}
+    cp -a "${data_dir}/token_list" "${dumpdir}/token_list"
+fi
 
 # Set tag for naming of model directory
 if [ -z "${tag}" ]; then
@@ -257,7 +318,11 @@ fi
 
 # The directory used for collect-stats mode
 if [ -z "${tts_stats_dir}" ]; then
-    tts_stats_dir="${expdir}/tts_stats_${feats_type}_${token_type}"
+    tts_stats_dir="${expdir}/tts_stats_${feats_type}"
+    if [ "${feats_extract}" != fbank ]; then
+        tts_stats_dir+="_${feats_extract}"
+    fi
+    tts_stats_dir+="_${token_type}"
     if [ "${cleaner}" != none ]; then
         tts_stats_dir+="_${cleaner}"
     fi
@@ -270,7 +335,6 @@ if [ -z "${tts_exp}" ]; then
     tts_exp="${expdir}/tts_${tag}"
 fi
 
-echo Start: ${stage}, stop: ${stop_stage}
 
 # ========================== Main stages start from here. ==========================
 
@@ -292,144 +356,260 @@ if ! "${skip_data_prep}"; then
         # If nothing is need, then format_wav_scp.sh does nothing:
         # i.e. the input file format and rate is same as the output.
 
-        if [ "${feats_type}" = raw ]; then
-            log "Stage 2: Format wav.scp: data/ -> ${data_feats}/"
+        log "Stage 2: Format wav.scp: ${data_dir}/ -> ${data_feats}/"
+        for dset in "${train_set}" "${valid_set}" ${test_sets}; do
+            if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
+                _suf="/org"
+            else
+                _suf=""
+            fi
+            utils/copy_data_dir.sh ${work_dir}/data/"${dset}" "${data_feats}${_suf}/${dset}"
+            rm -f ${data_feats}${_suf}/${dset}/{segments,wav.scp,reco2file_and_channel}
+            _opts=
+            if [ -e ${work_dir}/data/"${dset}"/segments ]; then
+                _opts+="--segments ${work_dir}/data/${dset}/segments "
+            fi
+
+            # shellcheck disable=SC2086
+            scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
+                --audio-format "${audio_format}" --fs "${fs}" ${_opts} \
+                "${work_dir}/data/${dset}/wav.scp" "${data_feats}${_suf}/${dset}"
+            echo "${feats_type}" > "${data_feats}${_suf}/${dset}/feats_type"
+        done
+    fi
+
+    if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+        # Extract speaker embedding
+        if "${use_spk_embed}"; then
+            if [ "${spk_embed_tool}" = "kaldi" ]; then
+		log "${spk_embed_tag} will be set to 'xvector' for Kaldi extraction"
+		spk_embed_tag=xvector
+
+                log "Stage 3.1: Extract X-vector with Kaldi: ${data_dir}/ -> ${dumpdir}/${spk_embed_tag} (Require Kaldi)"
+                # Download X-vector pretrained model
+                xvector_exp=${expdir}/xvector_nnet_1a
+                if [ ! -e "${xvector_exp}" ]; then
+                    log "X-vector model does not exist. Download pre-trained model."
+                    wget http://kaldi-asr.org/models/8/0008_sitw_v2_1a.tar.gz
+                    tar xvf 0008_sitw_v2_1a.tar.gz
+                    [ ! -e "${expdir}" ] && mkdir -p "${expdir}"
+                    mv 0008_sitw_v2_1a/exp/xvector_nnet_1a "${xvector_exp}"
+                    rm -rf 0008_sitw_v2_1a.tar.gz 0008_sitw_v2_1a
+                fi
+
+                # Generate the MFCC features, VAD decision, and X-vector
+                for dset in "${train_set}" "${valid_set}" ${test_sets}; do
+                    if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
+                        _suf="/org"
+                    else
+                        _suf=""
+                    fi
+                    # 1. Copy ${data_dir}dir and resample to 16k
+                    utils/copy_data_dir.sh "${data_feats}${_suf}/${dset}" "${dumpdir}/mfcc/${dset}"
+                    utils/data/resample_data_dir.sh 16000 "${dumpdir}/mfcc/${dset}"
+
+                    # 2. Extract mfcc features
+                    _nj=$(min "${nj}" "$(<${dumpdir}/mfcc/${dset}/utt2spk wc -l)")
+                    steps/make_mfcc.sh --nj "${_nj}" --cmd "${train_cmd}" \
+                        --write-utt2num-frames true \
+                        --mfcc-config conf/mfcc.conf \
+                        "${dumpdir}/mfcc/${dset}"
+                    utils/fix_data_dir.sh "${dumpdir}/mfcc/${dset}"
+
+                    # 3. Compute VAD decision
+                    _nj=$(min "${nj}" "$(<${dumpdir}/mfcc/${dset}/spk2utt wc -l)")
+                    sid/compute_vad_decision.sh --nj ${_nj} --cmd "${train_cmd}" \
+                        --vad-config conf/vad.conf \
+                        "${dumpdir}/mfcc/${dset}"
+                    utils/fix_data_dir.sh "${dumpdir}/mfcc/${dset}"
+
+                    # 4. Extract X-vector
+                    sid/nnet3/xvector/extract_xvectors.sh --nj "${_nj}" --cmd "${train_cmd}" \
+                        "${xvector_exp}" \
+                        "${dumpdir}/mfcc/${dset}" \
+                        "${dumpdir}/${spk_embed_tag}/${dset}"
+
+                    # 5. Filter scp
+                    # NOTE(kan-bayashi): Since sometimes mfcc or x-vector extraction is failed,
+                    #   the number of utts will be different from the original features (raw or fbank).
+                    #   To avoid this mismatch, perform filtering of the original feature scp here.
+                    cp "${data_feats}${_suf}/${dset}"/wav.{scp,scp.bak}
+                    <"${data_feats}${_suf}/${dset}/wav.scp.bak" \
+                        utils/filter_scp.pl "${dumpdir}/${spk_embed_tag}/${dset}/${spk_embed_tag}.scp" \
+                        >"${data_feats}${_suf}/${dset}/wav.scp"
+                    utils/fix_data_dir.sh "${data_feats}${_suf}/${dset}"
+                done
+            else
+                # Assume that others toolkits are python-based
+                log "Stage 3.1: Extract speaker embedding: ${data_dir}/ -> ${dumpdir}/${spk_embed_tag} using python toolkits"
+
+                if ${spk_embed_gpu_inference}; then
+                    _cmd="${cuda_cmd}"
+                    _ngpu=1
+                else
+                    _cmd="${decode_cmd}"
+                    _ngpu=0
+                fi
+
+                for dset in "${train_set}" "${valid_set}" ${test_sets}; do
+                    if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
+                        _suf="/org"
+                    else
+                        _suf=""
+                    fi
+
+                    # RawNet convenience name
+                    if [ "${spk_embed_tool}" = "rawnet" ]; then
+                        spk_embed_model="RawNet"
+                    fi
+
+                    # Choose extractor (sequential vs parallel)
+                    _script="pyscripts/utils/extract_spk_embed.py"
+                    _extra=""
+                    if "${spk_embed_parallel}"; then
+                        _script="pyscripts/utils/extract_spk_embed_parallel.py"
+                        _extra+=" --num_workers ${spk_embed_num_workers}"
+                        _extra+=" --batch_size ${spk_embed_batch_size}"
+                        _extra+=" --prefetch ${spk_embed_prefetch}"
+                    fi
+
+                    _device=$([ "${spk_embed_gpu_inference}" = true ] && echo cuda || echo cpu)
+
+                    ${_cmd} --gpu "${_ngpu}" "${dumpdir}/${spk_embed_tag}/${dset}/spk_embed_extract.log" \
+                        ${python} "${_script}" \
+                            --pretrained_model "${spk_embed_model}" \
+                            --toolkit "${spk_embed_tool}" \
+                            --spk_embed_tag "${spk_embed_tag}" \
+                            --device "${_device}" \
+                            ${_extra} \
+                            "${data_feats}${_suf}/${dset}" \
+                            "${dumpdir}/${spk_embed_tag}/${dset}"
+                done
+            fi
+        else
+            log "Skip Stage 3.1, no speaker embedding extraction set"
+        fi
+
+        # Prepare spk id input
+        if "${use_sid}"; then
+            log "Stage 3.2: Prepare speaker id: ${data_dir}/ -> ${data_feats}/"
             for dset in "${train_set}" "${valid_set}" ${test_sets}; do
                 if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
                     _suf="/org"
                 else
                     _suf=""
                 fi
-                utils/copy_data_dir.sh ${work_dir}/data/"${dset}" "${data_feats}${_suf}/${dset}"
-                rm -f ${data_feats}${_suf}/${dset}/{segments,wav.scp,reco2file_and_channel}
-                _opts=
-                if [ -e ${work_dir}/data/"${dset}"/segments ]; then
-                    _opts+="--segments data/${dset}/segments "
+                if [ "${dset}" = "${train_set}" ]; then
+                    # Make spk2sid
+                    # NOTE(kan-bayashi): 0 is reserved for unknown speakers
+                    echo "<unk> 0" > "${data_feats}${_suf}/${dset}/spk2sid"
+                    cut -f 2 -d " " "${data_feats}${_suf}/${dset}/utt2spk" | sort | uniq | \
+                        awk '{print $1 " " NR}' >> "${data_feats}${_suf}/${dset}/spk2sid"
                 fi
-                # shellcheck disable=SC2086
-                scripts/audio/format_wav_scp.sh --nj "${nj}" --cmd "${train_cmd}" \
-                    --audio-format "${audio_format}" --fs "${fs}" ${_opts} \
-                    "${work_dir}/data/${dset}/wav.scp" "${data_feats}${_suf}/${dset}"
-                echo "${feats_type}" > "${data_feats}${_suf}/${dset}/feats_type"
-            done
-
-        elif [ "${feats_type}" = fbank ] || [ "${feats_type}" = stft ] ; then
-            log "Stage 2: ${feats_type} extract: data/ -> ${data_feats}/"
-
-            # Generate the fbank features; by default 80-dimensional fbanks on each frame
-            for dset in "${train_set}" "${valid_set}" ${test_sets}; do
-                if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
-                    _suf="/org"
-                else
-                    _suf=""
-                fi
-                # 1. Copy datadir
-                utils/copy_data_dir.sh ${work_dir}/data/"${dset}" "${data_feats}${_suf}/${dset}"
-
-                # 2. Feature extract
-                # TODO(kamo): Wrap (nj->_nj) in make_fbank.sh
-                _nj=$(min "${nj}" "$(<${data_feats}${_suf}/${dset}/utt2spk wc -l)")
-                _opts=
-                if [ "${feats_type}" = fbank ] ; then
-                    _opts+="--fmax ${fmax} "
-                    _opts+="--fmin ${fmin} "
-                    _opts+="--n_mels ${n_mels} "
-                fi
-
-                # shellcheck disable=SC2086
-                scripts/feats/make_"${feats_type}".sh --cmd "${train_cmd}" --nj "${_nj}" \
-                    --fs "${fs}" \
-                    --n_fft "${n_fft}" \
-                    --n_shift "${n_shift}" \
-                    --win_length "${win_length}" \
-                    ${_opts} \
-                    "${data_feats}${_suf}/${dset}"
-                utils/fix_data_dir.sh "${data_feats}${_suf}/${dset}"
-
-                # 3. Derive the the frame length and feature dimension
-                scripts/feats/feat_to_shape.sh --nj "${_nj}" --cmd "${train_cmd}" \
-                    "${data_feats}${_suf}/${dset}/feats.scp" "${data_feats}${_suf}/${dset}/feats_shape"
-
-                # 4. Write feats_dim
-                head -n 1 "${data_feats}${_suf}/${dset}/feats_shape" | awk '{ print $2 }' \
-                    | cut -d, -f2 > ${data_feats}${_suf}/${dset}/feats_dim
-
-                # 5. Write feats_type
-                echo "${feats_type}" > "${data_feats}${_suf}/${dset}/feats_type"
+                pyscripts/utils/utt2spk_to_utt2sid.py \
+                    "${data_feats}/org/${train_set}/spk2sid" \
+                    "${data_feats}${_suf}/${dset}/utt2spk" \
+                    > "${data_feats}${_suf}/${dset}/utt2sid"
             done
         fi
+
+        # Prepare lang id input
+        if "${use_lid}"; then
+            log "Stage 3.3: Prepare lang id: ${data_dir}/ -> ${data_feats}/"
+            for dset in "${train_set}" "${valid_set}" ${test_sets}; do
+                if [ "${dset}" = "${train_set}" ] || [ "${dset}" = "${valid_set}" ]; then
+                    _suf="/org"
+                else
+                    _suf=""
+                fi
+                if [ "${dset}" = "${train_set}" ]; then
+                    # Make lang2lid
+                    # NOTE(kan-bayashi): 0 is reserved for unknown languages
+                    echo "<unk> 0" > "${data_feats}${_suf}/${dset}/lang2lid"
+                    cut -f 2 -d " " "${data_feats}${_suf}/${dset}/utt2lang" | sort | uniq | \
+                        awk '{print $1 " " NR}' >> "${data_feats}${_suf}/${dset}/lang2lid"
+                fi
+                # NOTE(kan-bayashi): We can reuse the same script for making utt2sid
+                pyscripts/utils/utt2spk_to_utt2sid.py \
+                    "${data_feats}/org/${train_set}/lang2lid" \
+                    "${data_feats}${_suf}/${dset}/utt2lang" \
+                    > "${data_feats}${_suf}/${dset}/utt2lid"
+            done
+        fi
+		if "${use_spk_embed}"; then
+		    if ls "${dumpdir}/${spk_embed_tag}"/**/"${spk_embed_tag}.scp" >/dev/null 2>&1; then
+		        log "Fixing order of speaker-embed scp to match text"
+		        scripts/utils/sort_spk_embed_scp.sh "${dumpdir}" "${spk_embed_tag}"
+		    else
+		        log "WARN: no speaker-embed scp files found; skip sorting"
+		    fi
+		fi
     fi
 
 
-    if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-        log "Stage 3: Remove long/short data: ${data_feats}/org -> ${data_feats}"
-
+    if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+        log "Stage 4: Remove long/short ${data_dir}: ${data_feats}/org -> ${data_feats}"
         # NOTE(kamo): Not applying to test_sets to keep original data
         for dset in "${train_set}" "${valid_set}"; do
             # Copy data dir
             utils/copy_data_dir.sh "${data_feats}/org/${dset}" "${data_feats}/${dset}"
             cp "${data_feats}/org/${dset}/feats_type" "${data_feats}/${dset}/feats_type"
+            if [ -e "${data_feats}/org/${dset}/utt2sid" ]; then
+                cp "${data_feats}/org/${dset}/utt2sid" "${data_feats}/${dset}/utt2sid"
+            fi
+            if [ -e "${data_feats}/org/${dset}/utt2lid" ]; then
+                cp "${data_feats}/org/${dset}/utt2lid" "${data_feats}/${dset}/utt2lid"
+            fi
 
             # Remove short utterances
-            _feats_type="$(<${data_feats}/${dset}/feats_type)"
-            if [ "${_feats_type}" = raw ]; then
-                _fs=$(python3 -c "import humanfriendly as h;print(h.parse_size('${fs}'))")
-                _min_length=$(python3 -c "print(int(${min_wav_duration} * ${_fs}))")
-                _max_length=$(python3 -c "print(int(${max_wav_duration} * ${_fs}))")
+            _fs=$(python3 -c "import humanfriendly as h;print(h.parse_size('${fs}'))")
+            _min_length=$(python3 -c "print(int(${min_wav_duration} * ${_fs}))")
+            _max_length=$(python3 -c "print(int(${max_wav_duration} * ${_fs}))")
 
-                # utt2num_samples is created by format_wav_scp.sh
-                <"${data_feats}/org/${dset}/utt2num_samples" \
-                    awk -v min_length="${_min_length}" -v max_length="${_max_length}" \
-                        '{ if ($2 > min_length && $2 < max_length ) print $0; }' \
-                        >"${data_feats}/${dset}/utt2num_samples"
-                <"${data_feats}/org/${dset}/wav.scp" \
-                    utils/filter_scp.pl "${data_feats}/${dset}/utt2num_samples"  \
-                    >"${data_feats}/${dset}/wav.scp"
-            else
-                # Get frame shift in ms from conf/fbank.conf
-                _frame_shift=
-                if [ -f conf/fbank.conf ] && [ "$(<conf/fbank.conf grep -c frame-shift)" -gt 0 ]; then
-                    # Assume using conf/fbank.conf for feature extraction
-                    _frame_shift="$(<conf/fbank.conf grep frame-shift | sed -e 's/[-a-z =]*\([0-9]*\)/\1/g')"
-                fi
-                if [ -z "${_frame_shift}" ]; then
-                    # If not existing, use the default number in Kaldi (=10ms).
-                    # If you are using different number, you have to change the following value manually.
-                    _frame_shift=10
-                fi
-
-                _min_length=$(python3 -c "print(int(${min_wav_duration} / ${_frame_shift} * 1000))")
-                _max_length=$(python3 -c "print(int(${max_wav_duration} / ${_frame_shift} * 1000))")
-
-                cp "${data_feats}/org/${dset}/feats_dim" "${data_feats}/${dset}/feats_dim"
-                <"${data_feats}/org/${dset}/feats_shape" awk -F, ' { print $1 } ' \
-                    | awk -v min_length="${_min_length}" -v max_length="${_max_length}" \
-                        '{ if ($2 > min_length && $2 < max_length) print $0; }' \
-                        >"${data_feats}/${dset}/feats_shape"
-                <"${data_feats}/org/${dset}/feats.scp" \
-                    utils/filter_scp.pl "${data_feats}/${dset}/feats_shape"  \
-                    >"${data_feats}/${dset}/feats.scp"
-            fi
+            # utt2num_samples is created by format_wav_scp.sh
+            <"${data_feats}/org/${dset}/utt2num_samples" \
+                awk -v min_length="${_min_length}" -v max_length="${_max_length}" \
+                    '{ if ($2 > min_length && $2 < max_length ) print $0; }' \
+                    >"${data_feats}/${dset}/utt2num_samples"
+            <"${data_feats}/org/${dset}/wav.scp" \
+                utils/filter_scp.pl "${data_feats}/${dset}/utt2num_samples"  \
+                >"${data_feats}/${dset}/wav.scp"
 
             # Remove empty text
             <"${data_feats}/org/${dset}/text" \
                 awk ' { if( NF != 1 ) print $0; } ' >"${data_feats}/${dset}/text"
 
             # fix_data_dir.sh leaves only utts which exist in all files
-            utils/fix_data_dir.sh "${data_feats}/${dset}"
-        done
+            _utt_extra_files=""
+            if [ -e "${data_feats}/org/${dset}/utt2sid" ]; then
+                _utt_extra_files+="utt2sid "
+            fi
+            if [ -e "${data_feats}/org/${dset}/utt2lid" ]; then
+                _utt_extra_files+="utt2lid "
+            fi
+            # shellcheck disable=SC2086
+            utils/fix_data_dir.sh --utt_extra_files "${_utt_extra_files}" "${data_feats}/${dset}"
 
-        # shellcheck disable=SC2002
-        cat ${srctexts} | awk ' { if( NF != 1 ) print $0; } ' >"${data_feats}/srctexts"
+            # Filter spk_embedding
+            if "${use_spk_embed}"; then
+                cp "${dumpdir}/${spk_embed_tag}/${dset}"/${spk_embed_tag}.{scp,scp.bak}
+                <"${dumpdir}/${spk_embed_tag}/${dset}/${spk_embed_tag}.scp.bak" \
+                    utils/filter_scp.pl "${data_feats}/${dset}/wav.scp"  \
+                    >"${dumpdir}/${spk_embed_tag}/${dset}/${spk_embed_tag}.scp"
+            fi
+        done
     fi
 
 
-    if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-        log "Stage 4: Generate token_list from ${srctexts}"
+    if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+        log "Stage 5: Generate token_list from ${srctexts}"
         # "nlsyms_txt" should be generated by local/data.sh if need
 
         # The first symbol in token_list must be "<blank>" and the last must be also sos/eos:
         # 0 is reserved for CTC-blank for ASR and also used as ignore-index in the other task
+
+        # shellcheck disable=SC2002
+        cat ${srctexts} | awk ' { if( NF != 1 ) print $0; } ' >"${data_feats}/srctexts"
 
         ${python} -m espnet2.bin.tokenize_text \
               --token_type "${token_type}" -f 2- \
@@ -451,10 +631,10 @@ fi
 
 
 if ! "${skip_train}"; then
-    if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+    if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
         _train_dir="${data_feats}/${train_set}"
         _valid_dir="${data_feats}/${valid_set}"
-        log "Stage 5: TTS collect stats: train_set=${_train_dir}, valid_set=${_valid_dir}"
+        log "Stage 6: TTS collect stats: train_set=${_train_dir}, valid_set=${_valid_dir}"
 
         _opts=
         if [ -n "${train_config}" ]; then
@@ -463,28 +643,22 @@ if ! "${skip_train}"; then
             _opts+="--config ${train_config} "
         fi
 
-        _feats_type="$(<${_train_dir}/feats_type)"
-        if [ "${_feats_type}" = raw ]; then
-            _scp=wav.scp
-            if [[ "${audio_format}" == *ark* ]]; then
-                _type=kaldi_ark
-            else
-                # "sound" supports "wav", "flac", etc.
-                _type=sound
-            fi
-            _opts+="--feats_extract fbank "
+        _scp=wav.scp
+        if [[ "${audio_format}" == *ark* ]]; then
+            _type=kaldi_ark
+        else
+            # "sound" supports "wav", "flac", etc.
+            _type=sound
+        fi
+        _opts+="--feats_extract ${feats_extract} "
+        _opts+="--feats_extract_conf n_fft=${n_fft} "
+        _opts+="--feats_extract_conf hop_length=${n_shift} "
+        _opts+="--feats_extract_conf win_length=${win_length} "
+        if [ "${feats_extract}" = fbank ]; then
             _opts+="--feats_extract_conf fs=${fs} "
-            _opts+="--feats_extract_conf n_fft=${n_fft} "
             _opts+="--feats_extract_conf fmin=${fmin} "
             _opts+="--feats_extract_conf fmax=${fmax} "
             _opts+="--feats_extract_conf n_mels=${n_mels} "
-            _opts+="--feats_extract_conf hop_length=${n_shift} "
-            _opts+="--feats_extract_conf win_length=${win_length} "
-        else
-            _scp=feats.scp
-            _type=kaldi_ark
-            _odim="$(<${_train_dir}/feats_dim)"
-            _opts+="--odim=${_odim} "
         fi
 
         # Add extra configs for additional inputs
@@ -504,6 +678,23 @@ if ! "${skip_train}"; then
             _teacher_valid_dir="${teacher_dumpdir}/${valid_set}"
             _opts+="--train_data_path_and_name_and_type ${_teacher_train_dir}/durations,durations,text_int "
             _opts+="--valid_data_path_and_name_and_type ${_teacher_valid_dir}/durations,durations,text_int "
+        fi
+
+        if "${use_spk_embed}"; then
+            _spk_embed_train_dir="${dumpdir}/${spk_embed_tag}/${train_set}"
+            _spk_embed_valid_dir="${dumpdir}/${spk_embed_tag}/${valid_set}"
+            _opts+="--train_data_path_and_name_and_type ${_spk_embed_train_dir}/${spk_embed_tag}.scp,spembs,kaldi_ark "
+            _opts+="--valid_data_path_and_name_and_type ${_spk_embed_valid_dir}/${spk_embed_tag}.scp,spembs,kaldi_ark "
+        fi
+
+        if "${use_sid}"; then
+            _opts+="--train_data_path_and_name_and_type ${_train_dir}/utt2sid,sids,text_int "
+            _opts+="--valid_data_path_and_name_and_type ${_valid_dir}/utt2sid,sids,text_int "
+        fi
+
+        if "${use_lid}"; then
+            _opts+="--train_data_path_and_name_and_type ${_train_dir}/utt2lid,lids,text_int "
+            _opts+="--valid_data_path_and_name_and_type ${_valid_dir}/utt2lid,lids,text_int "
         fi
 
         # 1. Split the key file
@@ -530,14 +721,14 @@ if ! "${skip_train}"; then
         utils/split_scp.pl "${key_file}" ${split_scps}
 
         # 2. Generate run.sh
-        log "Generate '${tts_stats_dir}/run.sh'. You can resume the process from stage 5 using this script"
-        mkdir -p "${tts_stats_dir}"; echo "${run_args} --stage 5 \"\$@\"; exit \$?" > "${tts_stats_dir}/run.sh"; chmod +x "${tts_stats_dir}/run.sh"
+        log "Generate '${tts_stats_dir}/run.sh'. You can resume the process from stage 6 using this script"
+        mkdir -p "${tts_stats_dir}"; echo "${run_args} --stage 6 \"\$@\"; exit \$?" > "${tts_stats_dir}/run.sh"; chmod +x "${tts_stats_dir}/run.sh"
 
         # 3. Submit jobs
         log "TTS collect_stats started... log: '${_logdir}/stats.*.log'"
-        # shellcheck disable=SC2086
+        # shellcheck disable=SC2046,SC2086
         ${train_cmd} JOB=1:"${_nj}" "${_logdir}"/stats.JOB.log \
-            ${python} -m espnet2.bin.tts_train \
+            ${python} -m "espnet2.bin.${tts_task}_train" \
                 --collect_stats true \
                 --write_collected_feats "${write_collected_feats}" \
                 --use_preprocessor true \
@@ -556,13 +747,17 @@ if ! "${skip_train}"; then
                 --train_shape_file "${_logdir}/train.JOB.scp" \
                 --valid_shape_file "${_logdir}/valid.JOB.scp" \
                 --output_dir "${_logdir}/stats.JOB" \
-                ${_opts} ${train_args} || { cat "${_logdir}"/stats.1.log; exit 1; }
+                ${_opts} ${train_args} || { cat $(grep -l -i error "${_logdir}"/stats.*.log) ; exit 1; }
 
         # 4. Aggregate shape files
         _opts=
         for i in $(seq "${_nj}"); do
             _opts+="--input_dir ${_logdir}/stats.${i} "
         done
+        if [ "${feats_normalize}" != global_mvn ]; then
+            # Skip summerizaing stats if not using global MVN
+            _opts+="--skip_sum_stats"
+        fi
         ${python} -m espnet2.bin.aggregate_stats_dirs ${_opts} --output_dir "${tts_stats_dir}"
 
         # Append the num-tokens at the last dimensions. This is used for batch-bins count
@@ -576,10 +771,10 @@ if ! "${skip_train}"; then
     fi
 
 
-    if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
+    if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
         _train_dir="${data_feats}/${train_set}"
         _valid_dir="${data_feats}/${valid_set}"
-        log "Stage 6: TTS Training: train_set=${_train_dir}, valid_set=${_valid_dir}"
+        log "Stage 7: TTS Training: train_set=${_train_dir}, valid_set=${_valid_dir}"
 
         _opts=
         if [ -n "${train_config}" ]; then
@@ -592,27 +787,23 @@ if ! "${skip_train}"; then
             #####################################
             #     CASE 1: AR model training     #
             #####################################
-            _feats_type="$(<${_train_dir}/feats_type)"
-
-            if [ "${_feats_type}" = raw ]; then
-                _scp=wav.scp
+            _scp=wav.scp
+            if [[ "${audio_format}" == *ark* ]]; then
+                _type=kaldi_ark
+            else
                 # "sound" supports "wav", "flac", etc.
                 _type=sound
-                _fold_length="$((speech_fold_length * n_shift))"
-                _opts+="--feats_extract fbank "
+            fi
+            _fold_length="$((speech_fold_length * n_shift))"
+            _opts+="--feats_extract ${feats_extract} "
+            _opts+="--feats_extract_conf n_fft=${n_fft} "
+            _opts+="--feats_extract_conf hop_length=${n_shift} "
+            _opts+="--feats_extract_conf win_length=${win_length} "
+            if [ "${feats_extract}" = fbank ]; then
                 _opts+="--feats_extract_conf fs=${fs} "
                 _opts+="--feats_extract_conf fmin=${fmin} "
                 _opts+="--feats_extract_conf fmax=${fmax} "
                 _opts+="--feats_extract_conf n_mels=${n_mels} "
-                _opts+="--feats_extract_conf hop_length=${n_shift} "
-                _opts+="--feats_extract_conf n_fft=${n_fft} "
-                _opts+="--feats_extract_conf win_length=${win_length} "
-            else
-                _scp=feats.scp
-                _type=kaldi_ark
-                _fold_length="${speech_fold_length}"
-                _odim="$(<${_train_dir}/feats_dim)"
-                _opts+="--odim=${_odim} "
             fi
 
             if [ "${num_splits}" -gt 1 ]; then
@@ -659,7 +850,6 @@ if ! "${skip_train}"; then
             _teacher_train_dir="${teacher_dumpdir}/${train_set}"
             _teacher_valid_dir="${teacher_dumpdir}/${valid_set}"
             _fold_length="${speech_fold_length}"
-
             _opts+="--train_data_path_and_name_and_type ${_train_dir}/text,text,text "
             _opts+="--train_data_path_and_name_and_type ${_teacher_train_dir}/durations,durations,text_int "
             _opts+="--train_shape_file ${tts_stats_dir}/train/text_shape.${token_type} "
@@ -679,23 +869,23 @@ if ! "${skip_train}"; then
                 _opts+="--valid_shape_file ${_teacher_valid_dir}/speech_shape "
             else
                 # Teacher forcing case: use groundtruth as the target
-                if [ "${feats_type}" = raw ]; then
-                    _scp=wav.scp
+                _scp=wav.scp
+                if [[ "${audio_format}" == *ark* ]]; then
+                    _type=kaldi_ark
+                else
+                    # "sound" supports "wav", "flac", etc.
                     _type=sound
-                    _fold_length="$((speech_fold_length * n_shift))"
-                    _opts+="--feats_extract fbank "
+                fi
+                _fold_length="$((speech_fold_length * n_shift))"
+                _opts+="--feats_extract ${feats_extract} "
+                _opts+="--feats_extract_conf n_fft=${n_fft} "
+                _opts+="--feats_extract_conf hop_length=${n_shift} "
+                _opts+="--feats_extract_conf win_length=${win_length} "
+                if [ "${feats_extract}" = fbank ]; then
                     _opts+="--feats_extract_conf fs=${fs} "
                     _opts+="--feats_extract_conf fmin=${fmin} "
                     _opts+="--feats_extract_conf fmax=${fmax} "
                     _opts+="--feats_extract_conf n_mels=${n_mels} "
-                    _opts+="--feats_extract_conf hop_length=${n_shift} "
-                    _opts+="--feats_extract_conf n_fft=${n_fft} "
-                    _opts+="--feats_extract_conf win_length=${win_length} "
-                else
-                    _scp=feats.scp
-                    _type=kaldi_ark
-                    _odim="$(head -n 1 "${tts_stats_dir}/train/speech_shape" | cut -f 2 -d ",")"
-                    _opts+="--odim=${_odim} "
                 fi
                 _opts+="--train_data_path_and_name_and_type ${_train_dir}/${_scp},speech,${_type} "
                 _opts+="--train_shape_file ${tts_stats_dir}/train/speech_shape "
@@ -740,8 +930,32 @@ if ! "${skip_train}"; then
             _opts+="--energy_normalize_conf stats_file=${tts_stats_dir}/train/energy_stats.npz "
         fi
 
-        log "Generate '${tts_exp}/run.sh'. You can resume the process from stage 6 using this script"
-        mkdir -p "${tts_exp}"; echo "${run_args} --stage 6 \"\$@\"; exit \$?" > "${tts_exp}/run.sh"; chmod +x "${tts_exp}/run.sh"
+        # Add speaker embedding to the inputs if needed
+        if "${use_spk_embed}"; then
+            _spk_embed_train_dir="${dumpdir}/${spk_embed_tag}/${train_set}"
+            _spk_embed_valid_dir="${dumpdir}/${spk_embed_tag}/${valid_set}"
+            _opts+="--train_data_path_and_name_and_type ${_spk_embed_train_dir}/${spk_embed_tag}.scp,spembs,kaldi_ark "
+            _opts+="--valid_data_path_and_name_and_type ${_spk_embed_valid_dir}/${spk_embed_tag}.scp,spembs,kaldi_ark "
+        fi
+
+        # Add spekaer ID to the inputs if needed
+        if "${use_sid}"; then
+            _opts+="--train_data_path_and_name_and_type ${_train_dir}/utt2sid,sids,text_int "
+            _opts+="--valid_data_path_and_name_and_type ${_valid_dir}/utt2sid,sids,text_int "
+        fi
+
+        # Add language ID to the inputs if needed
+        if "${use_lid}"; then
+            _opts+="--train_data_path_and_name_and_type ${_train_dir}/utt2lid,lids,text_int "
+            _opts+="--valid_data_path_and_name_and_type ${_valid_dir}/utt2lid,lids,text_int "
+        fi
+
+        if [ "${feats_normalize}" = "global_mvn" ]; then
+            _opts+="--normalize_conf stats_file=${tts_stats_dir}/train/feats_stats.npz "
+        fi
+
+        log "Generate '${tts_exp}/run.sh'. You can resume the process from stage 7 using this script"
+        mkdir -p "${tts_exp}"; echo "${run_args} --stage 7 \"\$@\"; exit \$?" > "${tts_exp}/run.sh"; chmod +x "${tts_exp}/run.sh"
 
         # NOTE(kamo): --fold_length is used only if --batch_type=folded and it's ignored in the other case
 
@@ -760,15 +974,14 @@ if ! "${skip_train}"; then
             --num_nodes "${num_nodes}" \
             --init_file_prefix "${tts_exp}"/.dist_init_ \
             --multiprocessing_distributed true -- \
-            ${python} -m espnet2.bin.tts_train \
+            ${python} -m "espnet2.bin.${tts_task}_train" \
                 --use_preprocessor true \
                 --token_type "${token_type}" \
                 --token_list "${token_list}" \
                 --non_linguistic_symbols "${nlsyms_txt}" \
                 --cleaner "${cleaner}" \
                 --g2p "${g2p}" \
-                --normalize global_mvn \
-                --normalize_conf "stats_file=${tts_stats_dir}/train/feats_stats.npz" \
+                --normalize "${feats_normalize}" \
                 --resume true \
                 --fold_length "${text_fold_length}" \
                 --fold_length "${_fold_length}" \
@@ -802,8 +1015,8 @@ fi
 
 
 if ! "${skip_eval}"; then
-    if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
-        log "Stage 7: Decoding: training_dir=${tts_exp}"
+    if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
+        log "Stage 8: Decoding: training_dir=${tts_exp}"
 
         if ${gpu_inference}; then
             _cmd="${cuda_cmd}"
@@ -818,19 +1031,6 @@ if ! "${skip_eval}"; then
             _opts+="--config ${inference_config} "
         fi
 
-        if [ -z "${teacher_dumpdir}" ]; then
-            _feats_type="$(<${data_feats}/${train_set}/feats_type)"
-        else
-            if [ -e "${teacher_dumpdir}/${train_set}/probs" ]; then
-                # Knowledge distillation
-                _feats_type=fbank
-            else
-                # Teacher forcing
-                _feats_type="$(<${data_feats}/${train_set}/feats_type)"
-            fi
-        fi
-
-        # NOTE(kamo): If feats_type=raw, vocoder_conf is unnecessary
         _scp=wav.scp
         if [[ "${audio_format}" == *ark* ]]; then
             _type=kaldi_ark
@@ -838,22 +1038,9 @@ if ! "${skip_eval}"; then
             # "sound" supports "wav", "flac", etc.
             _type=sound
         fi
-        if [ "${_feats_type}" = fbank ] || [ "${_feats_type}" = stft ]; then
-            _opts+="--vocoder_conf n_fft=${n_fft} "
-            _opts+="--vocoder_conf n_shift=${n_shift} "
-            _opts+="--vocoder_conf win_length=${win_length} "
-            _opts+="--vocoder_conf fs=${fs} "
-            _scp=feats.scp
-            _type=kaldi_ark
-        fi
-        if [ "${_feats_type}" = fbank ]; then
-            _opts+="--vocoder_conf n_mels=${n_mels} "
-            _opts+="--vocoder_conf fmin=${fmin} "
-            _opts+="--vocoder_conf fmax=${fmax} "
-        fi
 
-        log "Generate '${tts_exp}/${inference_tag}/run.sh'. You can resume the process from stage 7 using this script"
-        mkdir -p "${tts_exp}/${inference_tag}"; echo "${run_args} --stage 7 \"\$@\"; exit \$?" > "${tts_exp}/${inference_tag}/run.sh"; chmod +x "${tts_exp}/${inference_tag}/run.sh"
+        log "Generate '${tts_exp}/${inference_tag}/run.sh'. You can resume the process from stage 8 using this script"
+        mkdir -p "${tts_exp}/${inference_tag}"; echo "${run_args} --stage 8 \"\$@\"; exit \$?" > "${tts_exp}/${inference_tag}/run.sh"; chmod +x "${tts_exp}/${inference_tag}/run.sh"
 
 
         for dset in ${test_sets}; do
@@ -876,6 +1063,22 @@ if ! "${skip_eval}"; then
                 fi
             fi
 
+            # Add speaker embedding to the inputs if needed
+            if "${use_spk_embed}"; then
+                _spk_embed_dir="${dumpdir}/${spk_embed_tag}/${dset}"
+                _ex_opts+="--data_path_and_name_and_type ${_spk_embed_dir}/${spk_embed_tag}.scp,spembs,kaldi_ark "
+            fi
+
+            # Add spekaer ID to the inputs if needed
+            if "${use_sid}"; then
+                _ex_opts+="--data_path_and_name_and_type ${_data}/utt2sid,sids,text_int "
+            fi
+
+            # Add language ID to the inputs if needed
+            if "${use_lid}"; then
+                _ex_opts+="--data_path_and_name_and_type ${_data}/utt2lid,lids,text_int "
+            fi
+
             # 0. Copy feats_type
             cp "${_data}/feats_type" "${_dir}/feats_type"
 
@@ -889,9 +1092,9 @@ if ! "${skip_eval}"; then
             # shellcheck disable=SC2086
             utils/split_scp.pl "${key_file}" ${split_scps}
 
-            # 3. Submit decoding jobs
+            # 2. Submit decoding jobs
             log "Decoding started... log: '${_logdir}/tts_inference.*.log'"
-            # shellcheck disable=SC2086
+            # shellcheck disable=SC2046,SC2086
             ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_logdir}"/tts_inference.JOB.log \
                 ${python} -m espnet2.bin.tts_inference \
                     --ngpu "${_ngpu}" \
@@ -901,36 +1104,53 @@ if ! "${skip_eval}"; then
                     --model_file "${tts_exp}"/"${inference_model}" \
                     --train_config "${tts_exp}"/config.yaml \
                     --output_dir "${_logdir}"/output.JOB \
-                    --vocoder_conf griffin_lim_iters="${griffin_lim_iters}" \
-                    ${_opts} ${_ex_opts} ${inference_args}
+                    --vocoder_file "${vocoder_file}" \
+                    ${_opts} ${_ex_opts} ${inference_args} || { cat $(grep -l -i error "${_logdir}"/tts_inference.*.log) ; exit 1; }
 
-            # 4. Concatenates the output files from each jobs
-            mkdir -p "${_dir}"/{norm,denorm,wav}
-            for i in $(seq "${_nj}"); do
-                 cat "${_logdir}/output.${i}/norm/feats.scp"
-            done | LC_ALL=C sort -k1 > "${_dir}/norm/feats.scp"
-            for i in $(seq "${_nj}"); do
-                 cat "${_logdir}/output.${i}/denorm/feats.scp"
-            done | LC_ALL=C sort -k1 > "${_dir}/denorm/feats.scp"
-            for i in $(seq "${_nj}"); do
-                 cat "${_logdir}/output.${i}/speech_shape/speech_shape"
-            done | LC_ALL=C sort -k1 > "${_dir}/speech_shape"
-            for i in $(seq "${_nj}"); do
-                mv -u "${_logdir}/output.${i}"/wav/*.wav "${_dir}"/wav
-                rm -rf "${_logdir}/output.${i}"/wav
-            done
+            # 3. Concatenates the output files from each jobs
+            if [ -e "${_logdir}/output.${_nj}/norm" ]; then
+                mkdir -p "${_dir}"/norm
+                for i in $(seq "${_nj}"); do
+                     cat "${_logdir}/output.${i}/norm/feats.scp"
+                done | LC_ALL=C sort -k1 > "${_dir}/norm/feats.scp"
+            fi
+            if [ -e "${_logdir}/output.${_nj}/denorm" ]; then
+                mkdir -p "${_dir}"/denorm
+                for i in $(seq "${_nj}"); do
+                     cat "${_logdir}/output.${i}/denorm/feats.scp"
+                done | LC_ALL=C sort -k1 > "${_dir}/denorm/feats.scp"
+            fi
+            if [ -e "${_logdir}/output.${_nj}/speech_shape" ]; then
+                for i in $(seq "${_nj}"); do
+                     cat "${_logdir}/output.${i}/speech_shape/speech_shape"
+                done | LC_ALL=C sort -k1 > "${_dir}/speech_shape"
+            fi
+            if [ -e "${_logdir}/output.${_nj}/wav" ]; then
+                mkdir -p "${_dir}"/wav
+                for i in $(seq "${_nj}"); do
+                    mv -u "${_logdir}/output.${i}"/wav/*.wav "${_dir}"/wav
+                    rm -rf "${_logdir}/output.${i}"/wav
+                done
+                find "${_dir}/wav" -name "*.wav" | while read -r line; do
+                    echo "$(basename "${line}" .wav) ${line}"
+                done | LC_ALL=C sort -k1 > "${_dir}/wav/wav.scp"
+            fi
             if [ -e "${_logdir}/output.${_nj}/att_ws" ]; then
                 mkdir -p "${_dir}"/att_ws
-                for i in $(seq "${_nj}"); do
-                     cat "${_logdir}/output.${i}/durations/durations"
-                done | LC_ALL=C sort -k1 > "${_dir}/durations"
-                for i in $(seq "${_nj}"); do
-                     cat "${_logdir}/output.${i}/focus_rates/focus_rates"
-                done | LC_ALL=C sort -k1 > "${_dir}/focus_rates"
                 for i in $(seq "${_nj}"); do
                     mv -u "${_logdir}/output.${i}"/att_ws/*.png "${_dir}"/att_ws
                     rm -rf "${_logdir}/output.${i}"/att_ws
                 done
+            fi
+            if [ -e "${_logdir}/output.${_nj}/durations" ]; then
+                for i in $(seq "${_nj}"); do
+                     cat "${_logdir}/output.${i}/durations/durations"
+                done | LC_ALL=C sort -k1 > "${_dir}/durations"
+            fi
+            if [ -e "${_logdir}/output.${_nj}/focus_rates" ]; then
+                for i in $(seq "${_nj}"); do
+                     cat "${_logdir}/output.${i}/focus_rates/focus_rates"
+                done | LC_ALL=C sort -k1 > "${_dir}/focus_rates"
             fi
             if [ -e "${_logdir}/output.${_nj}/probs" ]; then
                 mkdir -p "${_dir}"/probs
@@ -945,88 +1165,178 @@ else
     log "Skip the evaluation stages"
 fi
 
+if ! "${skip_scoring}"; then
+    if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
+        _gen_dir=${tts_exp}/${inference_tag}/${test_sets}
+        log "Stage 9: Scoring: TTS scoring via versa logs on ${_gen_dir}"
+        _data=${data_feats}/${test_sets}
+
+        log "Scoring TTS evaluation via VERSA, using default ${versa_config}. You can visit https://github.com/shinjiwlab/versa?tab=readme-ov-file#list-of-metrics for more supported metrics."
+        _opts=
+        _eval_dir=${_gen_dir}/scoring/versa_eval
+        mkdir -p ${_eval_dir}
+
+        _pred_file=${_gen_dir}/wav/wav_test.scp
+        _score_config=${versa_config}
+        _gt_file=${_data}/wav_test.scp
+
+        _nj=$(( inference_nj < $(wc -l < "${_pred_file}") ? inference_nj : $(wc -l < "${_pred_file}") ))
+
+        _split_files=""
+        for n in $(seq ${_nj}); do
+            _split_files+="${_eval_dir}/pred.${n} "
+        done
+        utils/split_scp.pl ${_pred_file} ${_split_files}
+
+        if [ -n "${_gt_file}" ]; then
+            _split_files=""
+            for n in $(seq ${_nj}); do
+                _split_files+="${_eval_dir}/gt.${n} "
+            done
+            utils/split_scp.pl ${_gt_file} ${_split_files}
+            _opts+="--gt ${_eval_dir}/gt.JOB"
+        fi
+
+        if ${gpu_inference}; then
+            _cmd="${cuda_cmd}"
+            _ngpu=1
+			use_gpu_flag="--use_gpu"
+        else
+            _cmd="${decode_cmd}"
+            _ngpu=0
+			use_gpu_flag=""
+        fi
+
+        ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_eval_dir}"/versa_eval.JOB.log \
+            python -m versa.bin.scorer \
+                --pred ${_eval_dir}/pred.JOB \
+                --score_config ${_score_config} \
+                --cache_folder ${_eval_dir}/cache \
+				--gt ${_gt_file} \
+                --text ${_data}/text \
+                ${use_gpu_flag} \
+                --output_file ${_eval_dir}/result.JOB.txt \
+                --io soundfile \
+                ${_opts} 2>&1;
+
+
+        python pyscripts/utils/aggregate_eval.py \
+            --logdir ${_eval_dir} \
+            --scoredir ${_eval_dir} \
+            --nj ${_nj}
+
+        _log_dir="${_eval_dir}"
+        _count=0
+        for f in "${_log_dir}"/result.*.txt; do
+            if [ -f "$f" ]; then
+                c=$(wc -l < "$f")
+                _count=$(( _count + c ))
+            fi
+        done
+        echo "sentences: ${_count}" >> "${_eval_dir}/avg_result.txt"
+        ./scripts/utils/show_tts_results.sh ${_gen_dir}
+        log "Finished scoring evaluation, results are in ${_eval_dir}"
+    fi
+fi
 
 packed_model="${tts_exp}/${tts_exp##*/}_${inference_model%.*}.zip"
-if ! "${skip_upload}"; then
-    if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
-        log "Stage 8: Pack model: ${packed_model}"
+if ! "${skip_packing}" && [ -z "${download_model}" ]; then
+    # Skip pack preparation if using a downloaded model or skip_packing is true
+    if [ ${stage} -le 10 ] && [ ${stop_stage} -ge 10 ]; then
+        log "Stage 10: Pack model: ${packed_model}"
 
         _opts=""
+        if [ -e "${tts_stats_dir}/train/feats_stats.npz" ]; then
+            _opts+=" --option ${tts_stats_dir}/train/feats_stats.npz"
+        fi
         if [ -e "${tts_stats_dir}/train/pitch_stats.npz" ]; then
             _opts+=" --option ${tts_stats_dir}/train/pitch_stats.npz"
         fi
         if [ -e "${tts_stats_dir}/train/energy_stats.npz" ]; then
             _opts+=" --option ${tts_stats_dir}/train/energy_stats.npz"
         fi
+        if "${use_spk_embed}"; then
+            for dset in "${train_set}" ${test_sets}; do
+                _opts+=" --option ${dumpdir}/${spk_embed_tag}/${dset}/spk_${spk_embed_tag}.scp"
+                _opts+=" --option ${dumpdir}/${spk_embed_tag}/${dset}/spk_${spk_embed_tag}.ark"
+            done
+        fi
+        if "${use_sid}"; then
+            _opts+=" --option ${data_feats}/org/${train_set}/spk2sid"
+        fi
+        if "${use_lid}"; then
+            _opts+=" --option ${data_feats}/org/${train_set}/lang2lid"
+        fi
         ${python} -m espnet2.bin.pack tts \
             --train_config "${tts_exp}"/config.yaml \
             --model_file "${tts_exp}"/"${inference_model}" \
-            --option "${tts_stats_dir}"/train/feats_stats.npz  \
             --option "${tts_exp}"/images  \
             --outpath "${packed_model}" \
             ${_opts}
 
         # NOTE(kamo): If you'll use packed model to inference in this script, do as follows
         #   % unzip ${packed_model}
-        #   % ./run.sh --stage 8 --tts_exp $(basename ${packed_model} .zip) --inference_model pretrain.pth
+        #   % ./run.sh --stage 9 --tts_exp $(basename ${packed_model} .zip) --inference_model pretrain.pth
+    fi
+else
+    log "Skip the packing stage"
+fi
+
+if ! "${skip_upload_hf}"; then
+    if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ]; then
+        [ -z "${hf_repo}" ] && \
+            log "ERROR: You need to setup the variable hf_repo with the name of the repository located at HuggingFace" && \
+            exit 1
+        log "Stage 11: Upload model to HuggingFace: ${hf_repo}"
+
+    if [ ! -f "${packed_model}" ]; then
+        log "ERROR: ${packed_model} does not exist. Please run stage 9 first."
+        exit 1
     fi
 
+        gitlfs=$(git lfs --version 2> /dev/null || true)
+        [ -z "${gitlfs}" ] && \
+            log "ERROR: You need to install git-lfs first" && \
+            exit 1
 
-    if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
-        log "Stage 9: Upload model to Zenodo: ${packed_model}"
-
-        # To upload your model, you need to do:
-        #   1. Signup to Zenodo: https://zenodo.org/
-        #   2. Create access token: https://zenodo.org/account/settings/applications/tokens/new/
-        #   3. Set your environment: % export ACCESS_TOKEN="<your token>"
+        dir_repo=${expdir}/hf_${hf_repo//"/"/"_"}
+        [ ! -d "${dir_repo}" ] && git clone https://huggingface.co/${hf_repo} ${dir_repo}
 
         if command -v git &> /dev/null; then
             _creator_name="$(git config user.name)"
-            _checkout="
-git checkout $(git show -s --format=%H)"
+            _checkout="git checkout $(git show -s --format=%H)"
         else
             _creator_name="$(whoami)"
             _checkout=""
         fi
-        # /some/where/espnet/egs2/foo/tts1/ -> foo/tt1
-        _task="$(pwd | rev | cut -d/ -f1-2 | rev)"
+        # /some/where/espnet/egs2/foo/asr1/ -> foo/asr1
+        _task="$(pwd | rev | cut -d/ -f2 | rev)"
         # foo/asr1 -> foo
         _corpus="${_task%/*}"
         _model_name="${_creator_name}/${_corpus}_$(basename ${packed_model} .zip)"
 
+        # copy files in ${dir_repo}
+        unzip -o ${packed_model} -d ${dir_repo}
         # Generate description file
-        cat << EOF > "${tts_exp}"/description
-This model was trained by ${_creator_name} using ${_task} recipe in <a href="https://github.com/espnet/espnet/">espnet</a>.
-<p>&nbsp;</p>
-<ul>
-<li><strong>Python API</strong><pre><code class="language-python">See https://github.com/espnet/espnet_model_zoo</code></pre></li>
-<li><strong>Evaluate in the recipe</strong><pre>
-<code class="language-bash">git clone https://github.com/espnet/espnet
-cd espnet${_checkout}
-pip install -e .
-cd $(pwd | rev | cut -d/ -f1-3 | rev)
-# Download the model file here
-./run.sh --skip_data_prep false --skip_train true --download_model ${_model_name}</code>
-</pre></li>
-<li><strong>Config</strong><pre><code>$(cat "${tts_exp}"/config.yaml)</code></pre></li>
-</ul>
-EOF
+        # shellcheck disable=SC2034
+        hf_task=text-to-speech
+        # shellcheck disable=SC2034
+        espnet_task=TTS
+        # shellcheck disable=SC2034
+        task_exp=${tts_exp}
+        eval "echo \"$(cat scripts/utils/TEMPLATE_HF_Readme.md)\"" > "${dir_repo}"/README.md
 
-        # NOTE(kamo): The model file is uploaded here, but not published yet.
-        #   Please confirm your record at Zenodo and publish by yourself.
-
-        # shellcheck disable=SC2086
-        espnet_model_zoo_upload \
-            --file "${packed_model}" \
-            --title "ESPnet2 pretrained model, ${_model_name}, fs=${fs}, lang=${lang}" \
-            --description_file "${tts_exp}"/description \
-            --creator_name "${_creator_name}" \
-            --license "CC-BY-4.0" \
-            --use_sandbox false \
-            --publish false
+        this_folder=${PWD}
+        cd ${dir_repo}
+        if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Update model"
+        fi
+        git push
+        cd ${this_folder}
     fi
 else
-    log "Skip the uploading stages"
+    log "Skip the uploading to HuggingFace stage"
 fi
 
 log "Successfully finished. [elapsed=${SECONDS}s]"
