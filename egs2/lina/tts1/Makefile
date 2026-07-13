@@ -3,7 +3,8 @@ cfg?=Makefile.options
 #####################################################################################
 work_dir?=v-01
 corpus_dir?=corpus/data
-trans_type?=phn
+token_type?=phn
+trans_type?=$(token_type)
 exp?=tts_train_raw_phn_none
 cuda?=0
 ngpu?=1
@@ -13,7 +14,6 @@ speaker?=LIN
 f0min?=128
 f0max?=350
 final_fs2_model?=train.loss.ave
-# exp=char_train_no_dev_pytorch_train_pytorch_tacotron2
 #####################################################################################
 #### INFO
 #####################################################################################
@@ -202,7 +202,7 @@ pack/fs2: $(work_dir)/.fs2.train.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 	# add missing files
 	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_$(exp_suffix)/tts_train_fastspeech2_raw_$(exp_suffix)_${final_fs2_model}.zip \
-		$(work_dir)/exp/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
+		$(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
 .PHONY: pack/fs2
 #####################################################################################		
 build: pack/fs2
