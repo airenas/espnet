@@ -5,9 +5,15 @@ set -e
 set -u
 set -o pipefail
 
-fs=22050
-n_fft=1024
-n_shift=256
+# fs=22050
+# n_fft=1024
+# n_shift=256
+
+
+# fs=44100
+# n_fft=2048
+# n_shift=512
+# win_length=2048
 
 opts=
 if [ "${fs}" -eq 48000 ]; then
@@ -44,4 +50,5 @@ inference_config=conf/decode.yaml
     --cleaner none \
     --g2p none \
     --ngpu ${ngpu} \
+    --win_length ${win_length} \
     ${opts} "$@"

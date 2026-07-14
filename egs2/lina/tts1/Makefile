@@ -14,6 +14,11 @@ speaker?=LIN
 f0min?=128
 f0max?=350
 final_fs2_model?=train.loss.ave
+
+fs?=$(freq)
+n_shift?=$(step)
+n_fft?=1024
+win_length?=1024
 #####################################################################################
 #### INFO
 #####################################################################################
@@ -38,6 +43,8 @@ info:
 	@echo "exclude_files: $(exclude_files)"
 	@echo "freq: $(freq)"
 	@echo "step: $(step)"
+	@echo "win_length: $(win_length)"
+	@echo "n_fft: $(n_fft)"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
