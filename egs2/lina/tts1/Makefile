@@ -210,7 +210,7 @@ pack/fs2: $(work_dir)/.fs2.train.done
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 	# add missing files
 	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_$(exp_suffix)/tts_train_fastspeech2_raw_$(exp_suffix)_${final_fs2_model}.zip \
-		$(work_dir)/exp/tts_train_raw_phn_none/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
+		$(work_dir)/exp/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
 .PHONY: pack/fs2
 #####################################################################################		
 build: pack/fs2
