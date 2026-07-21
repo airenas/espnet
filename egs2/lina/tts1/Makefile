@@ -20,6 +20,8 @@ n_shift?=$(step)
 n_fft?=1024
 win_length?=1024
 fmax?=7600
+fmin?=60
+n_mels?=80
 #####################################################################################
 #### INFO
 #####################################################################################
@@ -34,18 +36,18 @@ info:
 	@echo "inference_model: $(inference_model)"
 	@echo "final_fs2_model: $(final_fs2_model)"
 	@echo "speaker: $(speaker)"
-	@echo "f0min: $(f0min)"
-	@echo "f0max: $(f0max)"
+	@echo "f0min: $(f0min), f0max: $(f0max)"
+	@echo "fmin: $(fmin), fmax: $(fmax)"
+	@echo "n_mels: $(n_mels)"
+	@echo "n_fft: $(n_fft), n_shift: $(n_shift), win_length: $(win_length)"
+	@echo "freq: $(fs)"
 	@echo "test_count: $(test_count)"
 	@echo "corpus: $(corpus)"
 	@echo "corpus_mlf: $(corpus_mlf)"
 	@echo "lab_prefix: $(lab_prefix)"
 	@echo "corpus_wav_dir: $(corpus_wav_dir)"
 	@echo "exclude_files: $(exclude_files)"
-	@echo "freq: $(freq)"
 	@echo "step: $(step)"
-	@echo "win_length: $(win_length)"
-	@echo "n_fft: $(n_fft)"
 	@echo "nvidia-smi: 		$$(nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv | tail -n1)"
 	@echo "cuda visible dev: 	$$(echo $$CUDA_VISIBLE_DEVICES)"
 	@echo "python: 			$$(python --version)"
