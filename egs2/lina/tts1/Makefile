@@ -157,7 +157,7 @@ clean/corpus:
 #####################################################################################
 #####################################################################################
 #####################################################################################
-train/all: $(work_dir)/.fs2.eval.done
+train/all: $(work_dir)/.fs2.train.done
 .PHONY: train/all
 prepare/initial: $(work_dir)/.initial.prepare.done
 .PHONY: prepare/initial
@@ -198,8 +198,8 @@ $(work_dir)/.fs2.train.done: $(work_dir)/.fs2.prepare.done
 	CUDA_VISIBLE_DEVICES=$(cuda) ./run.sh --stage 6 --stop-stage 7 $(fastspeech2_params)
 	touch $@
 
-prepare-fs2: $(work_dir)/.fs2.prepare.done 
-train-fs2: $(work_dir)/.fs2.train.done
+prepare/fs2: $(work_dir)/.fs2.prepare.done 
+train/fs2: $(work_dir)/.fs2.train.done
 ######################################################################################
 # PACK MODEL
 ######################################################################################
@@ -208,14 +208,14 @@ fs2_pack_params=--trans_type $(token_type) \
 		--train_config conf/tuning/train_fastspeech2.yaml \
 		--skip_packing false \
 		--inference_model ${final_fs2_model}.pth 
-pack/fs2: $(work_dir)/.fs2.train.done
+pack/fs2: 
 	./run.sh --stage 10 --stop-stage 10 $(fs2_pack_params)
 	# add missing files
 	zip -r $(work_dir)/exp/tts_train_fastspeech2_raw_$(exp_suffix)/tts_train_fastspeech2_raw_$(exp_suffix)_${final_fs2_model}.zip \
 		$(work_dir)/exp/decode_use_teacher_forcingtrue_${inference_model}/stats/train/*.npz
 .PHONY: pack/fs2
 #####################################################################################		
-build: pack/fs2
+build: train/fs2 pack/fs2
 .PHONY: build
 #####################################################################################		
 train-one:
