@@ -22,6 +22,9 @@ win_length?=1024
 fmax?=7600
 fmin?=60
 n_mels?=80
+
+phones_type?=phones
+punct_duration?=10
 #####################################################################################
 #### INFO
 #####################################################################################
@@ -30,6 +33,8 @@ info:
 	@echo "corpus_dir: $(corpus_dir)"
 	@echo "corpus_out_dir: $(corpus_out_dir)"
 	@echo "trans_type: $(trans_type)"
+	@echo "phones_type: $(phones_type)"
+	@echo "punct_duration: $(punct_duration)"
 	@echo "exp: $(exp)"
 	@echo "cuda: $(cuda)"
 	@echo "ngpu: $(ngpu)"
@@ -63,11 +68,21 @@ info:
 python_local_cmd=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
 		
 ${corpus_out_dir}/extracted ${corpus_out_dir}/lab ${corpus_out_dir}/range ${corpus_out_dir}/wav ${corpus_out_dir}/text \
-	${corpus_out_dir}/lists $(corpus_out_dir)/$(corpus) $(corpus_out_dir)/$(corpus)/wavs $(work_dir)/downloads/${corpus}/wavs $(work_dir)/downloads/${corpus}:
+	${corpus_out_dir}/lists $(corpus_out_dir)/$(corpus) $(corpus_out_dir)/$(corpus)/wavs $(work_dir)/downloads/${corpus}/wavs $(work_dir)/downloads/${corpus} \
+	$(corpus_dir):
 	mkdir -p $@
-############################################
+#####################################################################################
+download/corpus: | $(corpus_dir)
+	mcli cp $(corpus_bucket)/ $(corpus_dir) --recursive
+#####################################################################################
+#####################################################################################
+ifeq ($(metadata_utf8),1)
+    _convert_cmd = cp $< $@
+else
+    _convert_cmd = iconv -f ISO-8859-13 -t UTF-8 $< > $@
+endif
 ${corpus_out_dir}/extracted/utf8.mlf: ${corpus_dir}/$(corpus_mlf) | ${corpus_out_dir}/extracted
-	iconv -f ISO-8859-13 -t UTF-8 $< > $@
+	$(_convert_cmd)
 ############################################
 ${corpus_out_dir}/extracted/fixed.mlf: ${corpus_out_dir}/extracted/utf8.mlf | ${corpus_out_dir}/lab
 	pv $^ | $(python_local_cmd) ./local/exclude_files.py --exclude "$(exclude_files)" \
@@ -102,7 +117,7 @@ ${corpus_out_dir}/wav/.done: ${corpus_out_dir}/wav/split.sh
 	touch ${corpus_out_dir}/wav/.done
 ############################################
 ${corpus_out_dir}/extracted/metadata.csv: ${corpus_out_dir}/extracted/fixed.split.mlf
-	pv $< | $(python_local_cmd) ./local/mlf_to_csv.py --outputPhones --skipSP > $@_
+	pv $< | $(python_local_cmd) ./local/mlf_to_csv.py --skipSP --type $(phones_type)> $@_
 	mv $@_ $@
 $(work_dir)/downloads/${corpus}/metadata.csv: ${corpus_out_dir}/extracted/metadata.csv | $(work_dir)/downloads/${corpus}
 	pv $< | sed '/noise/d' | sort > $@_
@@ -110,7 +125,8 @@ $(work_dir)/downloads/${corpus}/metadata.csv: ${corpus_out_dir}/extracted/metada
 $(work_dir)/downloads/${corpus}/durations: ${corpus_out_dir}/extracted/fixed.split.mlf ${corpus_out_dir}/extracted/audio.samples \
 	${corpus_out_dir}/extracted/exclude.files | $(work_dir)/downloads/${corpus}		
 	pv $< | $(python_local_cmd) ./local/exclude_files.py --excludeFromFile ${corpus_out_dir}/extracted/exclude.files \
-		| $(python_local_cmd) ./local/mlf_to_durations.py --shift $(step) --freq $(freq) --samplesFile ${corpus_out_dir}/extracted/audio.samples \
+		| $(python_local_cmd) ./local/mlf_to_durations.py --type $(phones_type) --shift $(step) --freq $(freq) \
+			--samplesFile ${corpus_out_dir}/extracted/audio.samples --punct-duration=$(punct_duration) \
 		| sort > $@_
 	mv $@_ $@
 
