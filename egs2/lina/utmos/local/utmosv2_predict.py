@@ -37,6 +37,7 @@ def main():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("files", nargs="*", help="Audio files to process")
     parser.add_argument("--out", help="CSV output file (default: stdout)")
+    parser.add_argument("--eval-sentences", type=int, default=0, help="Number of sentences to evaluate (0 for all)")
     args = parser.parse_args()
 
     files = args.files
@@ -49,7 +50,7 @@ def main():
     with output as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(["file", "sampling_rate", "mos"])
-        for audio_file in tqdm(files, desc="Calculate UTMOS v2"):
+        for audio_file in tqdm(files[:args.eval_sentences] if args.eval_sentences > 0 else files, desc="Calculate UTMOS v2"):
             data, sampling_rate = load_16k(audio_file)
             mos = model.predict(data=data, sr=sampling_rate, device=device(), num_repetitions=5)
             mos = float(np.asarray(mos).reshape(-1)[0])

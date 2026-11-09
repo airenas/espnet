@@ -5,6 +5,10 @@ log ?= INFO
 python_local_cmd?=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
 uv_cmd?=LOGLEVEL=$(log) uv run python
 sota_model_dir?=./.sota-model
+## 0 - all
+eval_sentences?=0
+#method?=sotamos
+method?=utmosv2
 ###########################################
 info:
 	@echo "cfg      = ${cfg}"
@@ -15,7 +19,8 @@ info:
 	@echo "vocoder  = ${vocoder}"
 	@echo "vocoder_file = ${vocoder_file}"
 	@echo "input    = ${input}"
-
+	@echo "eval_sentences = ${eval_sentences}"
+	@echo "method    = ${method}"
 .PHONY: info
 ###########################################
 ${work_dir}/am/model ${work_dir}/vocoder/model ${work_dir}/audio $(sota_model_dir) \
@@ -53,28 +58,28 @@ $(sota_model_dir)/.uv.done: $(sota_model_dir)/.dwn
 init/sota: $(sota_model_dir)/.uv.done
 .PHONY: init/sota
 ###########################################
-${work_dir}/prediction_utmosv2.csv: ${work_dir}/audio/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
-	$(uv_cmd) ./local/utmosv2_predict.py --out $@_ ${work_dir}/audio/*.wav
+${work_dir}/prediction_utmosv2.csv: ${work_dir}/audio/.done $(sota_model_dir)/.uv.done
+	$(uv_cmd) ./local/utmosv2_predict.py --out $@_ ${work_dir}/audio/*.wav --eval-sentences ${eval_sentences}
 	mv $@_ $@
 ###########################################
 ${work_dir}/prediction_sotamos.csv: ${work_dir}/audio/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
 	$(uv_cmd) $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
 		--out ${work_dir}/prediction_sotamos.csv ${work_dir}/audio/*.wav
 ###########################################
+${work_dir}/prediction_corpus_utmosv2.csv: ${work_dir}/audio-corpus/.done $(sota_model_dir)/.uv.done
+	$(uv_cmd) ./local/utmosv2_predict.py --out $@_ ${work_dir}/audio-corpus/*.wav --eval-sentences ${eval_sentences}
+	mv $@_ $@
+###########################################
 ${work_dir}/prediction_corpus.csv: ${work_dir}/audio-corpus/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
 	$(uv_cmd) $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
 		--out ${work_dir}/prediction_corpus.csv ${work_dir}/audio-corpus/*.wav 		
 ###########################################
-build/sotamos: ${work_dir}/prediction_sotamos.csv
-	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_sotamos.csv
-.PHONY: build/sotamos
+build: ${work_dir}/prediction_${method}.csv
+	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_${method}.csv
+.PHONY: build
 ###########################################
-build/utmosv2: ${work_dir}/prediction_utmosv2.csv
-	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_utmosv2.csv
-.PHONY: build/utmosv2
-###########################################
-build/corpus: ${work_dir}/prediction_corpus.csv
-	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_corpus.csv
+build/corpus: ${work_dir}/prediction_corpus_${method}.csv
+	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_corpus_${method}.csv
 .PHONY: build/corpus
 ###########################################
 clean/all: clean
