@@ -26,6 +26,7 @@ def main():
     max_val = max(durations)
     avg_val = sum(durations) / len(durations)
 
+    logging.info(f"Test: {len(durations)}")
     logging.info(f"Min: {min_val:.4f}")
     logging.info(f"Max: {max_val:.4f}")
     logging.info(f"Avg: {avg_val:.4f}")
