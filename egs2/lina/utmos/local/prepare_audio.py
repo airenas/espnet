@@ -51,6 +51,8 @@ def main():
                 if processed_audio_ms >= total_audio_ms:
                     break
                 segment = audio[start:start + segment_duration_ms]
+                if len(segment) < 2000:
+                    break
                 segment.export(args.output / f"{audio_file.stem}_segment{i}.wav", format="wav")
                 logging.info(f"Exported segment {i} of {audio_file.name}")
                 processed_audio_ms += len(segment)

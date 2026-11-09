@@ -7,6 +7,7 @@ dependencies = [
     "pydub>=0.25.1",
     "soundfile>=0.14.0",
     "tqdm>=4.70.1",
+    "utmosv2",
 ]
 
 [build-system]
@@ -18,3 +19,6 @@ package = false
 
 [tool.uv.workspace]
 members = []
+
+[tool.uv.sources]
+utmosv2 = { git = "https://github.com/sarulab-speech/UTMOSv2.git" }

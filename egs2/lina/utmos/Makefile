@@ -3,18 +3,18 @@
 work_dir?=.work
 log ?= INFO
 python_local_cmd?=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
+uv_cmd?=LOGLEVEL=$(log) uv run python
 sota_model_dir?=./.sota-model
 ###########################################
 info:
 	@echo "cfg      = ${cfg}"
 	@echo "work_dir = ${work_dir}"
+	@echo "corpus_s3_dir = ${corpus_s3_dir}"
 	@echo "am       = ${am}"
 	@echo "am_file  = ${am_file}"
 	@echo "vocoder  = ${vocoder}"
 	@echo "vocoder_file = ${vocoder_file}"
 	@echo "input    = ${input}"
-	@echo "input    = ${input}"
-	@echo "corpus_s3_dir = ${corpus_s3_dir}"
 
 .PHONY: info
 ###########################################
@@ -53,20 +53,28 @@ $(sota_model_dir)/.uv.done: $(sota_model_dir)/.dwn
 init/sota: $(sota_model_dir)/.uv.done
 .PHONY: init/sota
 ###########################################
-${work_dir}/prediction.csv: ${work_dir}/audio/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
-	uv run python $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
-		--out ${work_dir}/prediction.csv ${work_dir}/audio/*.wav 
+${work_dir}/prediction_utmosv2.csv: ${work_dir}/audio/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
+	$(uv_cmd) ./local/utmosv2_predict.py --out $@_ ${work_dir}/audio/*.wav
+	mv $@_ $@
+###########################################
+${work_dir}/prediction_sotamos.csv: ${work_dir}/audio/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
+	$(uv_cmd) $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
+		--out ${work_dir}/prediction_sotamos.csv ${work_dir}/audio/*.wav
 ###########################################
 ${work_dir}/prediction_corpus.csv: ${work_dir}/audio-corpus/.done $(sota_model_dir)/.dwn $(sota_model_dir)/.uv.done
-	uv run python $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
+	$(uv_cmd) $(sota_model_dir)/model/onnx/onnx_predict.py --model $(sota_model_dir)/model/onnx \
 		--out ${work_dir}/prediction_corpus.csv ${work_dir}/audio-corpus/*.wav 		
 ###########################################
-build: ${work_dir}/prediction.csv
-	LOGLEVEL=$(log) uv run python ./local/eval.py --input ${work_dir}/prediction.csv
-.PHONY: build
+build/sotamos: ${work_dir}/prediction_sotamos.csv
+	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_sotamos.csv
+.PHONY: build/sotamos
+###########################################
+build/utmosv2: ${work_dir}/prediction_utmosv2.csv
+	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_utmosv2.csv
+.PHONY: build/utmosv2
 ###########################################
 build/corpus: ${work_dir}/prediction_corpus.csv
-	LOGLEVEL=$(log) uv run python ./local/eval.py --input ${work_dir}/prediction_corpus.csv
+	$(uv_cmd) ./local/eval.py --input ${work_dir}/prediction_corpus.csv
 .PHONY: build/corpus
 ###########################################
 clean/all: clean
