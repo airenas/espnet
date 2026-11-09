@@ -4,7 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "onnxruntime>=1.16.0",
+    "pydub>=0.25.1",
     "soundfile>=0.14.0",
+    "tqdm>=4.70.1",
 ]
 
 [build-system]
