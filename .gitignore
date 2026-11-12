@@ -133,6 +133,5 @@ egs2/sing/tts1/exp/
 egs2/lina/tts1/.data
 egs2/lina/tts1/corpus
 egs2/lina/tts1/44test
-egs2/lina/tts1/Makefile.options.sau
-egs2/lina/tts1/Makefile.options.ner44
 /egs2/lina/utmos/.venv/
+egs2/lina/tts1/Makefile.options.*
