@@ -1,4 +1,6 @@
 import argparse
+import logging
+import os
 import sys
 from typing import List, Tuple
 
@@ -151,6 +153,8 @@ class Line:
         #     phones = get_word_phones(self.words).strip()
         elif _type == "phones_sp":
             durations = get_durations_sp(self.words, self.cfg)
+        elif _type == "phones_word_pos_sp":
+            durations = get_durations_sp(self.words, self.cfg)
         else:
             raise RuntimeError(f"unknow output type: '{_type}'")
 
@@ -175,13 +179,12 @@ def main(argv):
     parser.add_argument("--punct-duration", default=10, type=int, help="Punctuation duration")
     args = parser.parse_args(args=argv)
 
-    print("Starting", file=sys.stderr)
-    print(f"type {args.type}", file=sys.stderr)
-    print(f"shift {args.shift}", file=sys.stderr)
-    print(f"freq {args.freq}", file=sys.stderr)
-    print(f"punct-duration {args.punct_duration}", file=sys.stderr)
+    logging.info(f"type {args.type}")
+    logging.info(f"shift {args.shift}")
+    logging.info(f"freq {args.freq}")
+    logging.info(f"punct-duration {args.punct_duration}")
     cfg = Config(shift=args.shift, freq=args.freq, punct_duration=args.punct_duration)
-    print("Reading samples file : %s" % args.samplesFile, file=sys.stderr)
+    logging.info("Reading samples file : %s" % args.samplesFile)
     samples = {}
     with open(args.samplesFile) as f:
         lines = f.readlines()
@@ -190,7 +193,7 @@ def main(argv):
             if s_line:
                 ls = s_line.split(' ')
                 samples[ls[0]] = int(ls[1])
-    print("Read samples file with %d lines" % len(samples), file=sys.stderr)
+    logging.info("Read samples file with %d lines" % len(samples))
 
     lc, wc = 0, 0
     ln: Line | None = None
@@ -225,9 +228,12 @@ def main(argv):
     if ln:
         print(ln.to_str(_type=args.type), file=sys.stdout)
 
-    print("Read %d lines, %d words" % (lc, wc), file=sys.stderr)
-    print("Done", file=sys.stderr)
-
+    logging.info("Read %d lines, %d words" % (lc, wc))
 
 if __name__ == "__main__":
+    logging.basicConfig(format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s",
+                        level=getattr(logging, os.environ.get("LOGLEVEL", "WARNING").upper(), logging.WARNING))
+    logging.info(f"Starting")
     main(sys.argv[1:])
+    logging.info("Done")
+

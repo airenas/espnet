@@ -65,6 +65,7 @@ info:
 #####################################################################################
 #####################################################################################
 #####################################################################################
+log=INFO
 python_local_cmd=PYTHONPATH=./../../../ LOGLEVEL=$(log) python3
 		
 ${corpus_out_dir}/extracted ${corpus_out_dir}/lab ${corpus_out_dir}/range ${corpus_out_dir}/wav ${corpus_out_dir}/text \
@@ -124,10 +125,10 @@ $(work_dir)/downloads/${corpus}/metadata.csv: ${corpus_out_dir}/extracted/metada
 	mv $@_ $@
 $(work_dir)/downloads/${corpus}/durations: ${corpus_out_dir}/extracted/fixed.split.mlf ${corpus_out_dir}/extracted/audio.samples \
 	${corpus_out_dir}/extracted/exclude.files | $(work_dir)/downloads/${corpus}		
-	pv $< | $(python_local_cmd) ./local/exclude_files.py --excludeFromFile ${corpus_out_dir}/extracted/exclude.files \
+	bash -c 'set -o pipefail; pv $< | $(python_local_cmd) ./local/exclude_files.py --excludeFromFile ${corpus_out_dir}/extracted/exclude.files \
 		| $(python_local_cmd) ./local/mlf_to_durations.py --type $(phones_type) --shift $(step) --freq $(freq) \
 			--samplesFile ${corpus_out_dir}/extracted/audio.samples --punct-duration=$(punct_duration) \
-		| sort > $@_
+		| sort > $@_'
 	mv $@_ $@
 
 ############################################

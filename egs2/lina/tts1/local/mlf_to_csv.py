@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import sys
 from typing import List
 
@@ -10,6 +11,30 @@ def change_phone(p) -> str:
     if p == ".":  ## do not drop dot
         return p
     return p.replace("'", "").replace(".", "")
+
+
+def add_phone_pos(phones):
+    first, last = -1, -1
+    for i, p in enumerate(phones):
+        if not mlf.is_sil(p):
+            if first == -1:
+                first = i
+            last =  i
+    if first  == -1 or last == -1:
+        return phones
+    res = []
+    for i, p in enumerate(phones):
+        if mlf.is_sil(p):
+            res.append(p)
+        elif i == first and i == last:
+            res.append(f"{phones[i]}_S")
+        elif i == first:
+            res.append(f"{phones[i]}_B")
+        elif i == last:
+            res.append(f"{phones[i]}_E")
+        else:
+            res.append(f"{phones[i]}_I")
+    return res
 
 
 class Word:
@@ -38,6 +63,26 @@ class Word:
             return ""
 
         phones = self.phones[:]
+        if mlf.is_sil(phones[-1]) and self.punctuation != "":
+            phones.insert(-1, get_punct(self.punctuation))
+        elif self.punctuation != "":
+            phones.append(get_punct(self.punctuation))
+        if phones[-1] != "sp" and phones[-1] != "sil":
+            phones.append("sp")
+        return " ".join(phones)
+
+    def phones_word_pos_sp(self) -> str:
+        """
+        Adds sp to every word
+        Adds word position to every phone (_S, _B, _I, _E)
+        """
+        if not self.phones:
+            return ""
+
+        phones = self.phones[:]
+
+        phones = add_phone_pos(phones)
+
         if mlf.is_sil(phones[-1]) and self.punctuation != "":
             phones.insert(-1, get_punct(self.punctuation))
         elif self.punctuation != "":
@@ -92,6 +137,14 @@ def get_phones_sp(words: List[Word]) -> str:
         res.append(phones_str)
     return " ".join(res)
 
+
+def get_phones_word_pos_sp(words: List[Word]) -> str:
+    res = []
+    for w in words:
+        phones_str = w.phones_word_pos_sp()
+        res.append(phones_str)
+    return " ".join(res)
+
 def get_word_phones(words: List[Word]) -> str:
     res = []
     for w in words:
@@ -120,6 +173,8 @@ class Line:
             phones = get_word_phones(self.words).strip()
         elif _type == "phones_sp":
             phones = get_phones_sp(self.words)
+        elif _type == "phones_word_pos_sp":
+            phones = get_phones_word_pos_sp(self.words)
         else:
             raise RuntimeError(f"unknow output type: '{_type}'")
         return f"{self.name}|{word_str}|{word_str.lower()}|{phones}"
@@ -149,8 +204,6 @@ def main(argv):
     parser.add_argument("--type", default="ph", type=str, help="Phones type")
     parser.add_argument("--skipSP", default=False, action='store_true', help="Skip 'sp' after punctuation")
     args = parser.parse_args(args=argv)
-
-    print("Starting", file=sys.stderr)
 
     lc = 0
     wc = 0
@@ -185,9 +238,12 @@ def main(argv):
     if ln:
         print(ln.to_str(_type=args.type), file=sys.stdout)
 
-    print("Read %d lines, %d words" % (lc, wc), file=sys.stderr)
-    print("Done", file=sys.stderr)
+    logging.info("Read %d lines, %d words" % (lc, wc))
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format="%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s",
+                        level=getattr(logging, os.environ.get("LOGLEVEL", "WARNING").upper(), logging.WARNING))
+    logging.info(f"Starting")
     main(sys.argv[1:])
+    logging.info("Done")
