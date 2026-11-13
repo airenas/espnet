@@ -35,12 +35,14 @@ class Config:
         self.shift = shift
         self.punct_duration = punct_duration
 
+# def calc_time(to, cfg: Config):
+#     to_ms = int(to) / 10000.0
+#     t_shift = 1000.0 * cfg.shift / cfg.freq
+#     return int(to_ms / t_shift)
 
 def calc_time(to, cfg: Config):
-    to_ms = int(to) / 10000.0
-    t_shift = 1000.0 * cfg.shift / cfg.freq
-    return int(to_ms / t_shift)
-
+    time_sec = int(to) / 10000000.0
+    return int(round(time_sec * (cfg.freq / cfg.shift)))
 
 class Phone:
     def __init__(self, phone: str, from_: int, to: int):

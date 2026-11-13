@@ -153,8 +153,11 @@ $(work_dir)/downloads/${corpus}/wavs/.done: ${corpus_out_dir}/wav/.done ${corpus
 	cat ${corpus_out_dir}/extracted/exclude.files | xargs -n 1 -I {} sh -c 'rm $(work_dir)/downloads/${corpus}/wavs/{}.wav'
 	touch $(work_dir)/downloads/${corpus}/wavs/.done
 ############################################
-test/durations: $(work_dir)/downloads/${corpus}/durations
-	cat $< | $(python_local_cmd) ./local/inspect_durations.py --duration 150 --shift $(step) --freq $(freq)
+test/durations: $(work_dir)/downloads/${corpus}/durations $(work_dir)/downloads/${corpus}/metadata.csv
+	$(python_local_cmd) ./local/inspect_durations.py --duration 150 \
+		--input-durations $(work_dir)/downloads/${corpus}/durations \
+		--input-csv $(work_dir)/downloads/${corpus}/metadata.csv --wav-dir $(work_dir)/downloads/${corpus}/wavs \
+		--calc-dio=0 
 test/corpus/len: $(work_dir)/downloads/${corpus}/wavs/.done
 	ls -1 $(work_dir)/downloads/${corpus}/wavs/*.wav | xargs -n1 soxi -D | $(python_local_cmd) -c "import sys; print(f'{sum(float(x) for x in sys.stdin)/3600:.3f}h')"
 
