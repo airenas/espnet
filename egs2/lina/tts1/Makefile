@@ -77,10 +77,12 @@ download/corpus: | $(corpus_dir)
 	mcli cp $(corpus_bucket)/ $(corpus_dir) --recursive
 #####################################################################################
 #####################################################################################
+# mlf_encoding=WIN-1257
+mlf_encoding?=ISO-8859-13
 ifeq ($(metadata_utf8),1)
     _convert_cmd = cp $< $@
 else
-    _convert_cmd = iconv -f ISO-8859-13 -t UTF-8 $< > $@
+    _convert_cmd = iconv -f $(mlf_encoding) -t UTF-8 $< > $@
 endif
 ${corpus_out_dir}/extracted/utf8.mlf: ${corpus_dir}/$(corpus_mlf) | ${corpus_out_dir}/extracted
 	$(_convert_cmd)
