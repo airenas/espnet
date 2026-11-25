@@ -98,3 +98,4 @@ clean:
 	rm -rf $(work_dir)
 .PHONY: clean
 ###########################################
+.EXPORT_ALL_VARIABLES:

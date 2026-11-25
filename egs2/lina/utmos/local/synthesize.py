@@ -114,7 +114,10 @@ def init_tts(am_file=None, vocoder_file=None):
         meta = am_path / "meta.yaml"
         kwargs = get_dict_from_cache(meta=meta)
     else:
-        kwargs = unpack(input_archive=am_file, outpath=cache_dir)
+        stat = am_path.stat()
+        key = f"{am_path.name}_{stat.st_size}_{int(stat.st_mtime)}"
+        am_cache_dir = Path(cache_dir)
+        kwargs = unpack(input_archive=am_file, outpath=am_cache_dir / key)
     print(kwargs)
 
     tts = Text2Speech.from_pretrained(
